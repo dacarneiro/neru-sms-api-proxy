@@ -1,0 +1,22 @@
+project:
+    name: neru-sms-api-proxy
+instance:
+    name: sms-api
+    runtime: nodejs16
+    region: aws.use1
+    application-id: 99484e05-3733-49ee-bdba-fefb8227839d
+    configurations:
+        test: ok
+    capabilities:
+        - messaging
+        - voice
+    entrypoint:
+        - node
+        - .
+debug:
+    name: neru-sms-api-proxy
+    entrypoint:
+        - nodemon
+        - node
+        - .
+        - --inspect
