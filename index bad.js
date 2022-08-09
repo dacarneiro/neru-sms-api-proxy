@@ -1,9 +1,11 @@
 import express from 'express';
+// import { Messages, Scheduler, Voice, neru } from 'neru-alpha';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import flash from 'connect-flash';
+
 import { connectDB, findOneEntry, insertEntry } from './database/mongodb.js';
 import { verifyToken } from './middleware/auth.js';
 const app = express();
@@ -23,23 +25,20 @@ var URL = '';
 // Gets the URL from proccess.env properties, so ejs can use it .
 if (process.env.DEBUG == 'true') {
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
-  console.log('Debug');
+  console.log('DEBUG');
+  app.listen(PORT, () => {
+    console.log(`NERU on port ${PORT}`);
+  });
 } else {
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-dev/
-  console.log('Deploy');
+  console.log('DEPLOY');
 }
 
 URL = process.env.ENDPOINT_URL_SCHEME + '/' + process.env.INSTANCE_SERVICE_NAME;
-console.log('URL:', URL);
+console.log('URL', URL);
 
 app.get('/_/health', async (req, res, next) => {
   res.send('OK');
-});
-
-// ROOT WORKING
-app.get('/', (req, res) => {
-  console.log('Hello from Express Server', req.body);
-  res.status(200).render('index.ejs', { URL: URL });
 });
 
 app.get('/webhooks/inbound', (req, res) => {
@@ -55,6 +54,12 @@ app.get('/webhooks/delivery-receipt', (req, res) => {
 // LOGOUT WORKING
 app.get('/logout', (req, res) => {
   res.redirect('/');
+});
+
+// ROOT WORKING
+app.get('/', (req, res) => {
+  console.log('Hello from Express Server', req.body);
+  res.status(200).render('index.ejs', { URL: URL });
 });
 
 // LOGIN WORKING
@@ -190,8 +195,4 @@ app.post('/login', async (req, res) => {
     console.log('Failed to login user', error);
     res.status(400).send('Failed to login user');
   }
-});
-
-app.listen(PORT, () => {
-  console.log(`NERU on port ${PORT}`);
 });
