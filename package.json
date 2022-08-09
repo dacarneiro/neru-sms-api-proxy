@@ -1,13 +1,25 @@
 {
   "name": "neru-sms-api-proxy",
+  "keywords": [
+    "ejs",
+    "neru",
+    "mongodb",
+    "express",
+    "node",
+    "login",
+    "register",
+    "jwt",
+    "vonage",
+    "jsonwebtoken"
+  ],
   "version": "1.0.0",
-  "description": "",
+  "description": "neru sms api proxy with mongodb atlas jwt login register auth pages",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Kitt Phi",
   "license": "ISC",
   "dependencies": {
     "@vonage/server-sdk": "^2.11.2",
