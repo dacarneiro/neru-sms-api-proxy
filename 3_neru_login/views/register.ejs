@@ -19,6 +19,9 @@
     </style>
   </head>
   <body>
+    <script>
+      console.log('RegisterURL:' + '<%= URL %>/register');
+    </script>
     <div class="container">
       <div class="col-sm-6 col-sm-offset-3">
         <h1><span class="fa fa-sign-in"></span> Register</h1>
@@ -29,7 +32,7 @@
         <% } %>
 
         <!-- REGISTER FORM -->
-        <form action="/register" method="post">
+        <form action="<%= URL %>/register" method="post">
           <div class="form-group">
             <label>Api Key</label>
             <input type="text" class="form-control" name="apiKey" />
@@ -46,7 +49,12 @@
 
           <div class="form-group">
             <label>Role</label>
-            <input type="text" class="form-control" name="role" />
+            <input
+              type="text"
+              class="form-control"
+              name="role"
+              placeholder="Enter admin"
+            />
           </div>
 
           <button type="submit" class="btn btn-warning btn-lg">Register</button>

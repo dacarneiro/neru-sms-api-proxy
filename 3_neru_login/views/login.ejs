@@ -19,6 +19,9 @@
     </style>
   </head>
   <body>
+    <script>
+      console.log('LoginURL:' + '<%= URL %>/login');
+    </script>
     <div class="container">
       <div class="col-sm-6 col-sm-offset-3">
         <h1><span class="fa fa-sign-in"></span> Login</h1>
@@ -29,7 +32,7 @@
         <% } %>
 
         <!-- LOGIN FORM -->
-        <form action="/login" method="post">
+        <form action="<%= URL %>/login" method="post">
           <div class="form-group">
             <label>Api Key</label>
             <input type="text" class="form-control" name="apiKey" />

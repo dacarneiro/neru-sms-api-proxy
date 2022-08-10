@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 
 // NERU
@@ -34,7 +33,7 @@ export const connectDB = async () => {
   }
 };
 
-// TO DO
+// FIND ALL LISTINGS
 export const findAllEntries = async (
   dbName,
   dbCollection,
@@ -55,7 +54,7 @@ export const findAllEntries = async (
 
     if (results.length > 0) {
       results.forEach((result, i) => {
-        console.log(`index: ${i} api-key: ${result['api-key']}`);
+        console.log(`index: ${i} email: ${result.email}`);
       });
     }
   } catch (error) {
@@ -63,12 +62,10 @@ export const findAllEntries = async (
   }
 };
 
-// TO DO
-export const findOneEntry = async ({ msisdn, to, apiKey }) => {
+export const findOneEntry = async (api_key, api_secret) => {
   try {
     console.log('Connected to DB...');
     await CLIENT.connect();
-    console.log('PARAMS:', msisdn, to, apiKey);
 
     const database = CLIENT.db(DB_NAME);
     const accounts = database.collection(DB_COLLECTION);
@@ -79,7 +76,7 @@ export const findOneEntry = async ({ msisdn, to, apiKey }) => {
     const results = await cursor.toArray();
 
     // const query = { apiKey: api_key, apiSecret: api_secret };
-    const query = { msisdn, to, apiKey };
+    const query = { apiKey: api_key };
 
     // const options = {
     //   projection: {
@@ -89,18 +86,9 @@ export const findOneEntry = async ({ msisdn, to, apiKey }) => {
     // };
     const account = await accounts.findOne(query);
     if (account) {
-      console.log('Found query match!');
-      // console.log('Found your account:', account);
-      // ADD CLIENT-REF
-      // let newPayload = {
-      //   msisdn: account.msisdn,
-      //   to: account.to,
-      //   messageId: account.messageId,
-      //   'api-key': account.apiKey,
-      //   'client-ref': account.clientRef,
-      // };
-
-      return account;
+      console.log('Found your account:', account);
+      // console.log('Bycrypt:', account.apiSecret);
+      return account; // RETURN HASHED API-SECRET
     } else {
       console.log('Account does not exist!', account);
       return false; // null
@@ -112,19 +100,12 @@ export const findOneEntry = async ({ msisdn, to, apiKey }) => {
   }
 };
 
-// TODO
 export const insertEntry = async ({
-  msisdn,
-  to,
-  networkCode,
-  messageId,
-  price,
-  status,
-  scts,
-  errCode,
-  clientRef,
   apiKey,
-  messageTimestamp,
+  apiSecret,
+  email,
+  role,
+  token,
 }) => {
   try {
     await CLIENT.connect();
@@ -135,17 +116,11 @@ export const insertEntry = async ({
 
     // create a document to insert
     const doc = {
-      msisdn,
-      to,
-      networkCode,
-      messageId,
-      price,
-      status,
-      scts,
-      errCode,
-      clientRef,
-      apiKey,
-      messageTimestamp,
+      apiKey: apiKey,
+      apiSecret: apiSecret,
+      email: email,
+      role: role,
+      token: token,
     };
     const result = await collection.insertOne(doc);
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
@@ -154,5 +129,13 @@ export const insertEntry = async ({
     console.log('🔥', error);
   } finally {
     await CLIENT.close();
+  }
+};
+
+export const setURL = async () => {
+  try {
+    // set URL logic here
+  } catch (error) {
+    console.log('🔥 ERROR', error);
   }
 };
