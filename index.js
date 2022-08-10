@@ -72,7 +72,14 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     apiKey: req.query['api-key'],
     messageTimestamp: req.query['message-timestamp'],
   });
-  res.status(200).send(result);
+
+  // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
+  let dlrPayload = {};
+
+  // GET RESPONSE FROM MUTANT
+  // IF ELSE. LOG ERROR
+
+  res.status(200).send('OK'); // GO TO VONAGE
 });
 
 // 2. Get client-ref from mongodb and send it to prefered endpoint
@@ -94,6 +101,7 @@ app.get('/webhooks/inbound', async (req, res) => {
   var type = req.query.type;
   var keyword = req.query.keyword;
   var messageTimestamp = req.query['message-timestamp'];
+  var messageId = req.query.messageId;
 
   let result = await findOneEntry({
     msisdn: req.query.msisdn,
@@ -104,7 +112,7 @@ app.get('/webhooks/inbound', async (req, res) => {
   let newPayload = {
     msisdn: result.msisdn,
     to: result.to,
-    messageId: result.messageId,
+    messageId: messageId,
     text: text,
     type: type,
     keyword: keyword,
@@ -140,6 +148,7 @@ app.get('/webhooks/inbound', async (req, res) => {
     data: data,
   };
 
+  // TO DO: SEND 200 IF SUCCESS OR 400??? IF FAIL
   axios(config)
     .then(function (response) {
       console.log(JSON.stringify(response.data));
