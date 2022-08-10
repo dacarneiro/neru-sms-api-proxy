@@ -44,7 +44,6 @@ app.get('/', (req, res) => {
 // 1. Get client-ref from request and store it for later use.
 app.get('/webhooks/delivery-receipt', async (req, res) => {
   console.log('DLR', req.query);
-
   // DLR {
   //   msisdn: '15754947093',
   //   to: '19899450176',
@@ -59,7 +58,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
   //   'message-timestamp': '2022-08-08 20:36:42'
   // }
 
-  let result = await insertEntry({
+  let dlrPayload = {
     msisdn: req.query.msisdn,
     to: req.query.to,
     networkCode: req.query['network-code'],
@@ -71,15 +70,42 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     clientRef: req.query['client-ref'],
     apiKey: req.query['api-key'],
     messageTimestamp: req.query['message-timestamp'],
-  });
+  };
 
-  // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
-  let dlrPayload = {};
+  console.log('dlrPayload:', dlrPayload);
 
-  // GET RESPONSE FROM MUTANT
-  // IF ELSE. LOG ERROR
+  let result = await insertEntry(dlrPayload);
+  if (result) {
+    console.log('result:', result);
+    // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
+    // GET RESPONSE FROM MUTANT
+    var data = JSON.stringify(dlrPayload);
 
-  res.status(200).send('OK'); // GO TO VONAGE
+    var config = {
+      method: 'post',
+      url: 'http://kittphi.ngrok.io/from-dlr',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      data: data,
+    };
+
+    // TO DO: SEND 200 IF SUCCESS OR 400??? IF FAIL
+    axios(config)
+      .then(function (response) {
+        // console.log(response.data);
+        console.log(response.status); // 200
+        console.log(response.statusText); // OK
+        // console.log(response.headers);
+        // console.log(response.config);
+      })
+      .catch(function (error) {
+        console.log('ERROR trying to send!', error);
+      });
+  }
+
+  res.status(200).send('OK'); // GOES TO VONAGE
 });
 
 // 2. Get client-ref from mongodb and send it to prefered endpoint
@@ -140,7 +166,7 @@ app.get('/webhooks/inbound', async (req, res) => {
 
   var config = {
     method: 'post',
-    url: 'https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/sendWithClientRef',
+    url: 'http://kittphi.ngrok.io/from-inbound',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -151,20 +177,21 @@ app.get('/webhooks/inbound', async (req, res) => {
   // TO DO: SEND 200 IF SUCCESS OR 400??? IF FAIL
   axios(config)
     .then(function (response) {
-      console.log(JSON.stringify(response.data));
+      console.log(response.status); // 200
+      console.log(response.statusText); // OK
     })
     .catch(function (error) {
-      console.log(error);
+      console.log('ERROR trying to send!', error);
     });
 
   res.status(200).send('OK');
 });
 
 // 3. Route to where client-ref is sent.
-app.post('/sendWithClientRef', (req, res) => {
-  console.log('sendWithClientRef:', req.body);
-  res.status(200).send('OK');
-});
+// app.post('/sendWithClientRef', (req, res) => {
+//   console.log('sendWithClientRef:', req.body);
+//   res.status(200).send('OK');
+// });
 
 app.listen(PORT, () => {
   console.log(`NERU on port ${PORT}`);

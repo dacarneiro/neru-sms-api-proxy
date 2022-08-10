@@ -148,9 +148,13 @@ export const insertEntry = async ({
       messageTimestamp,
     };
     const result = await collection.insertOne(doc);
+    // result = { acknowledged: true, insertedId: '62f3fb3e06e45a59d5a44435' }
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
-    return result;
+
+    // If inserted
+    return true;
   } catch (error) {
+    // If not inserted
     console.log('🔥', error);
   } finally {
     await CLIENT.close();
