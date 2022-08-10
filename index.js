@@ -43,7 +43,21 @@ app.get('/', (req, res) => {
 
 // 1. Get client-ref from request and store it for later use.
 app.get('/webhooks/delivery-receipt', async (req, res) => {
-  console.log(req.query);
+  console.log('DLR', req.query);
+
+  // DLR {
+  //   msisdn: '15754947093',
+  //   to: '19899450176',
+  //   'network-code': '72405',
+  //   messageId: '75e3f2d6-814b-49d2-bf3c-c19fb3b46515',
+  //   price: '0.04870000',
+  //   status: 'delivered',
+  //   scts: '2208082036',
+  //   'err-code': '0',
+  //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"
+  //   'api-key': '0759237b',
+  //   'message-timestamp': '2022-08-08 20:36:42'
+  // }
 
   let result = await insertEntry({
     msisdn: req.query.msisdn,
@@ -63,7 +77,19 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
 
 // 2. Get client-ref from mongodb and send it to prefered endpoint
 app.get('/webhooks/inbound', async (req, res) => {
-  console.log('/webhooks/inbound:');
+  console.log('INBOUND', req.query);
+
+  // INBOUND {
+  //   msisdn: '15754947093',
+  //   to: '19899450176',
+  //   messageId: '3000000013D6AB85',
+  //   text: 'Hello',
+  //   type: 'text',
+  //   keyword: 'HELLO',
+  //   'api-key': '4f2ff535',
+  //   'message-timestamp': '2022-08-08 20:27:10'
+  // }
+
   var text = req.query.text;
   var type = req.query.type;
   var keyword = req.query.keyword;
@@ -86,6 +112,18 @@ app.get('/webhooks/inbound', async (req, res) => {
     'client-ref': result.clientRef,
     ['message-timestamp']: messageTimestamp,
   };
+
+  // MODIFIED {
+  //   msisdn: '15754947093',
+  //   to: '19899450176',
+  //   messageId: '3000000013D6AB85',
+  //   text: 'Hello',
+  //   type: 'text',
+  //   keyword: 'HELLO',
+  //   'api-key': '4f2ff535',
+  //   'client-ref': 'xxxxxx'
+  //   'message-timestamp': '2022-08-08 20:27:10'
+  // }
 
   // console.log('newPayload', newPayload);
 
