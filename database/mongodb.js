@@ -21,20 +21,30 @@ const CLIENT = new MongoClient(MONGO_URI, {
   serverApi: ServerApiVersion.v1,
 });
 
-export const connectDB = async () => {
+export const deleteExpiredEntries = async () => {
   try {
-    console.log('Connected to DB...');
+    console.log('✅ Connecting to DB in deleteExpiredEntries...');
     await CLIENT.connect();
+    const db = CLIENT.db(DB_NAME).collection(DB_COLLECTION);
 
-    // DO DB STUFF HERE...
-    // await findAllEntries(DB_NAME, DB_COLLECTION, CLIENT, 5);
-    // await findOneEntry(DB_NAME, DB_COLLECTION, API_KEY, API_SECRET, CLIENT);
+    // IF ANY ENTRIES ARE EXPIRED DELETE THOSE ENTRIES
+    const query = {
+      date: { $lte: new Date().toISOString() },
+    };
+
+    const result = await db.deleteMany(query);
+    console.log('✅ Deleted ' + result.deletedCount + ' documents');
+
+    // RETURN TO INBOUND WEBHOOK
+    return result;
+  } catch (error) {
+    console.log('🔥 Error connecting to mongodb:', error);
   } finally {
     await CLIENT.close();
   }
 };
 
-// TO DO
+// NOT BEING USED
 export const findAllEntries = async (
   dbName,
   dbCollection,
@@ -63,48 +73,19 @@ export const findAllEntries = async (
   }
 };
 
-// TO DO
+// IS USED WHEN INBOUND WEBHOOK RECEIVES A MESSAGE
 export const findOneEntry = async ({ msisdn, to, apiKey }) => {
   try {
-    console.log('Connected to DB...');
+    console.log('✅ Connecting to DB in findOneEntry...');
     await CLIENT.connect();
-    console.log('PARAMS:', msisdn, to, apiKey);
+    const db = CLIENT.db(DB_NAME).collection(DB_COLLECTION);
 
-    const database = CLIENT.db(DB_NAME);
-    const accounts = database.collection(DB_COLLECTION);
-
-    const cursor = CLIENT.db(DB_NAME).collection(DB_COLLECTION).find();
-
-    // console.log('Showing all accounts...');
-    const results = await cursor.toArray();
-
-    // const query = { apiKey: api_key, apiSecret: api_secret };
     const query = { msisdn, to, apiKey };
 
-    // const options = {
-    //   projection: {
-    //     apiKey: 1,
-    //     apiSecret: 1,
-    //   },
-    // };
-    const account = await accounts.findOne(query);
-    if (account) {
-      console.log('Found query match!');
-      // console.log('Found your account:', account);
-      // ADD CLIENT-REF
-      // let newPayload = {
-      //   msisdn: account.msisdn,
-      //   to: account.to,
-      //   messageId: account.messageId,
-      //   'api-key': account.apiKey,
-      //   'client-ref': account.clientRef,
-      // };
+    const foundEntry = await db.findOne(query);
 
-      return account;
-    } else {
-      console.log('Account does not exist!', account);
-      return false; // null
-    }
+    // RETURN RESULT - WHETHER WE FOUND OR NOT
+    return foundEntry;
   } catch (error) {
     console.log('🔥 Error connecting to mongodb:', error);
   } finally {
@@ -112,7 +93,7 @@ export const findOneEntry = async ({ msisdn, to, apiKey }) => {
   }
 };
 
-// TODO
+// USED WHEN DLR WEBHOOK IS HIT WHEN OUTGOING MESSAGE IS SENT
 export const insertEntry = async ({
   msisdn,
   to,
@@ -125,15 +106,13 @@ export const insertEntry = async ({
   clientRef,
   apiKey,
   messageTimestamp,
+  date,
 }) => {
   try {
     await CLIENT.connect();
-    console.log('Connected to DB...');
+    console.log('Connected to DB in insertEntry');
+    const db = CLIENT.db(DB_NAME).collection(DB_COLLECTION);
 
-    const database = CLIENT.db(DB_NAME);
-    const collection = database.collection(DB_COLLECTION);
-
-    // create a document to insert
     const doc = {
       msisdn,
       to,
@@ -146,16 +125,18 @@ export const insertEntry = async ({
       clientRef,
       apiKey,
       messageTimestamp,
+      date,
     };
-    const result = await collection.insertOne(doc);
+    const result = await db.insertOne(doc);
     // result = { acknowledged: true, insertedId: '62f3fb3e06e45a59d5a44435' }
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
 
-    // If inserted
+    // IF INSERTED
     return true;
   } catch (error) {
-    // If not inserted
+    // IF NOT INSERTED
     console.log('🔥', error);
+    return false;
   } finally {
     await CLIENT.close();
   }

@@ -63,7 +63,7 @@ axios(config)
 //   err-code: 0,
 //   client-ref: %7B%27clid%27%3A33%2C%27cid%27%3A1036667%2C%27sid%27%3A14125%2C%27pid%27%3A%27617a537a-aa23-44d5-958a-e9cef6422c54%27%7D,
 //   api-key:4f2ff535,
-//   message-timestamp: 2022-08-10+03%3A03%3A20
+//   'message-timestamp': '2022-08-08 20:36:42'
 // }
 
 // OLD DLR {
