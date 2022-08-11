@@ -110,7 +110,7 @@ export const insertEntry = async ({
 }) => {
   try {
     await CLIENT.connect();
-    console.log('Connected to DB in insertEntry');
+    console.log('✅ Connecting to DB in insertEntry...');
     const db = CLIENT.db(DB_NAME).collection(DB_COLLECTION);
 
     const doc = {

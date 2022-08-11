@@ -69,7 +69,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
 
   // CREATE EXPIRED TIME BY ADDING 24 HOURS TO CURRENT TIME
   let date = new Date();
-  let expiredDate = addHours(24, date);
+  let expiredDate = addHours(24, date); // to test delete: 0.016 is a minute
 
   let dbPayload = {
     msisdn: req.query.msisdn,
@@ -161,14 +161,16 @@ app.get('/webhooks/inbound', async (req, res) => {
   } else {
     console.log('isExpired False:', isExpired);
   }
-  console.log('Deleted ' + isExpired.deletedCount + ' documents');
 
   // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
-  var text = req.query.text;
-  var type = req.query.type;
-  var keyword = req.query.keyword;
-  var messageTimestamp = req.query['message-timestamp'];
-  var messageId = req.query.messageId;
+  let msisdn = req.query.msisdn;
+  let to = req.query.to;
+  let messageId = req.query.messageId;
+  let text = req.query.text;
+  let type = req.query.type;
+  let keyword = req.query.keyword;
+  let messageTimestamp = req.query['message-timestamp'];
+  let apiKey = req.query.apiKey;
 
   // SEACH ALL UNEXPIRED ENTRIES
   let foundEntry = await findOneEntry({
@@ -177,7 +179,7 @@ app.get('/webhooks/inbound', async (req, res) => {
     apiKey: req.query['api-key'],
   });
 
-  // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT. ALSO PASS ALONG REQ.QUERY PARAMS.
+  // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT ADD IT AND JUST PASS ALONG REQ.QUERY PARAMS.
   let inboundPayload = null;
   if (foundEntry) {
     console.log('Found query match!', foundEntry);
@@ -193,20 +195,18 @@ app.get('/webhooks/inbound', async (req, res) => {
       'client-ref': foundEntry.clientRef,
       ['message-timestamp']: messageTimestamp,
     };
-  } else if (!foundEntry) {
+  } else {
     console.log('Did not find query match!', foundEntry);
     inboundPayload = {
-      msisdn: foundEntry.msisdn,
-      to: foundEntry.to,
+      msisdn: msisdn,
+      to: to,
       messageId: messageId,
       text: text,
       type: type,
       keyword: keyword,
-      'api-key': foundEntry.apiKey,
+      'api-key': apiKey,
       ['message-timestamp']: messageTimestamp,
     };
-  } else {
-    console.log('OOOPS something else was found', foundEntry);
   }
 
   // SEND TO PREFERRED OTHER INBOUND URL
