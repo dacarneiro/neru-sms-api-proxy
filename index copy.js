@@ -124,7 +124,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
       console.log('💡 statusText', response.statusText); // OK
       res.status(response.status).send('OK');
     })
-    .then(() => {
+    .then((response) => {
       let dbResult = insertEntry(dbPayload);
       console.log('Entry created:', dbResult);
     })

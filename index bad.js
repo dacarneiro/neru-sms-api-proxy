@@ -26,10 +26,10 @@ const { DB_NAME, DB_COLLECTION, MONGO_DB_PASSWORD } = JSON.parse(
 
 // Gets the URL from proccess.env properties, so ejs can use it .
 if (process.env.DEBUG == 'true') {
-  console.log('🚀 Debug');
+  console.log('Debug');
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
 } else {
-  console.log('🚀 Deploy');
+  console.log('Deploy');
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/
 }
 
@@ -72,7 +72,6 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
   let date = new Date();
   let expiredDate = addHours(24, date); // to test delete: 0.016 is a minute
 
-  // SEND TO DB
   let dbPayload = {
     msisdn: req.query.msisdn,
     to: req.query.to,
@@ -88,7 +87,10 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     date: expiredDate,
   };
 
-  // SEND TO MUTANT
+  // STORE OUTBOUND SMS TO DB.
+  let result = await insertEntry(dbPayload);
+
+  // SEND
   let dlrPayload = {
     msisdn: req.query.msisdn,
     to: req.query.to,
@@ -103,36 +105,53 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     messageTimestamp: req.query['message-timestamp'],
   };
 
-  // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
-  // GET RESPONSE FROM MUTANT
-  var data = JSON.stringify(dlrPayload);
+  // console.log('dlrPayload:', dlrPayload);
 
-  var config = {
-    method: 'post',
-    url: 'http://kittphi.ngrok.io/from-dlr',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    data: data,
-  };
+  if (result) {
+    console.log('Entry created:', result);
+    // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
+    // GET RESPONSE FROM MUTANT
+    var data = JSON.stringify(dlrPayload);
 
-  axios(config)
-    .then((response) => {
-      console.log('💡 SUCCESS DLR');
-      console.log('💡 status', response.status); // 200
-      console.log('💡 statusText', response.statusText); // OK
-      res.status(response.status).send('OK');
-    })
-    .then(() => {
-      let dbResult = insertEntry(dbPayload);
-      console.log('Entry created:', dbResult);
-    })
-    .catch((error) => {
-      console.log('💡 ERROR SENDING DLR', error);
-      console.log('💡 error.code', error.code);
-      res.status(404).send('ERR_BAD_REQUEST');
-    });
+    var config = {
+      method: 'post',
+      url: 'http://kittphi.ngrok.io/from-dlr',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      data: data,
+    };
+
+    axios(config)
+      .then((response) => {
+        console.log('💡 SUCCESS sending from DLR!', JSON.stringify(response));
+        console.log('💡 status', response.status); // 200
+        console.log('💡 statusText', response.statusText); // OK
+        res.status(response.status).send(response.statusText);
+      })
+      .catch((error) => {
+        // Helps pinpoint where the problem is
+        // Response with a status code not in range 2xx
+        console.log('💡 ERROR trying to send from DLR!', JSON.stringify(error));
+        if (error.response) {
+          // 404 - if no endpoint exists
+          // 502 - if server down
+          console.log('💡 ERROR status:', error.response.status); // 404
+          console.log('💡 ERROR code', error.response.code);
+          res.status(error.response.status).send(error.response.code);
+          // The request was made but no response was received
+        } else if (error.request) {
+          console.log('💡 ERROR REQUEST:', error.request);
+          res.status(error.status).send('ERROR REQUEST');
+        } else {
+          // An error occurred when setting up the request
+          console.log('💡 ERROR MESSAGE:', error.message);
+        }
+      });
+  }
+
+  // res.status(200).send('OK'); // GOES TO VONAGE
 });
 
 // 2. Get client-ref from mongodb and send it to prefered endpoint
@@ -216,17 +235,35 @@ app.get('/webhooks/inbound', async (req, res) => {
   axios(config)
     .then(function (response) {
       // console.log(JSON.stringify(response.data));
-      console.log('SUCCESS sending from INBOUND!');
+      console.log('SUCCESS sending from INBOUND!', JSON.stringify(response));
       console.log('💡 status', response.status); // 200
       console.log('💡 statusText', response.statusText); // OK
       res.status(response.status).send(response.statusText);
     })
     .catch(function (error) {
-      console.log('ERROR trying to send from INBOUND!');
-      console.log('💡 error.code', error.code); // ERR_BAD_REQUEST
-      console.log('💡 error.status', error.status); // Always undefined. Should be 404
-      res.status(404).send('ERR_BAD_REQUEST');
+      // Helps pinpoint where the problem is
+      // Response with a status code not in range 2xx
+      console.log(
+        '💡 ERROR trying to send from INBOUND!',
+        JSON.stringify(error)
+      );
+      if (error.response) {
+        // 404 - if no endpoint exists
+        // 502 - if server down
+        console.log('💡 ERROR status:', error.response.status); // 404
+        console.log('💡 ERROR code', error.response.code);
+        res.status(error.response.status).send(error.response.code);
+        // The request was made but no response was received
+      } else if (error.request) {
+        console.log('💡 ERROR REQUEST:', error.request);
+        res.status(error.status).send('ERROR REQUEST');
+      } else {
+        // An error occurred when setting up the request
+        console.log('💡 ERROR MESSAGE:', error.message);
+      }
     });
+
+  // res.status(200).send('OK');
 });
 
 app.listen(PORT, () => {
