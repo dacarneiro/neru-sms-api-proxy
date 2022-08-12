@@ -1,6 +1,5 @@
 *.env
 *.key
-*.yml
 neru.yml
 
 # Logs

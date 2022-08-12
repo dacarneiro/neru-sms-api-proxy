@@ -1,0 +1,24 @@
+project:
+  name: YOUR_NERU_APP_NAME
+instance:
+  name: YOUR_NERU_INSTANCE_NAME
+  runtime: nodejs16
+  region: aws.use1
+  application-id: YOUR_VONAGE_APP_ID
+  configurations:
+    DB_NAME: YOUR_MONGO_ATLAS_DB_NAME
+    DB_COLLECTION: YOUR_MONGO_ATLAS_DB_COLLECTION
+    MONGO_DB_PASSWORD: YOUR_MONGO_ATLAS_DB_PASSWORD
+  capabilities:
+    - messaging
+    - voice
+  entrypoint:
+    - node
+    - .
+debug:
+  name: YOUR_NERU_APP_NAME
+  entrypoint:
+    - nodemon
+    - node
+    - .
+    - --inspect

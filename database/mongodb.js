@@ -32,7 +32,7 @@ export const deleteExpiredEntries = async () => {
       date: { $lte: new Date().toISOString() },
     };
 
-    const result = await db.deleteMany(query);
+    const result = await db.deleteMany(query); // { acknowledged: true, deletedCount: 0 }
     console.log('✅ Deleted ' + result.deletedCount + ' documents');
 
     // RETURN TO INBOUND WEBHOOK

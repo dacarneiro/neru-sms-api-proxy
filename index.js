@@ -122,17 +122,18 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
       data: data,
     };
 
-    // TO DO: SEND 200 IF SUCCESS OR 400??? IF FAIL
     axios(config)
       .then(function (response) {
-        console.log('status:', response.status); // 200
-        console.log('statusText:', response.statusText); // OK
-        // res.status(response.status).send(response.statusText);
+        console.log('💡 SUCCESS sending from DLR!', JSON.stringify(response));
+        console.log('💡 status', response.status); // 200
+        console.log('💡 statusText', response.statusText); // OK
         res.status(200).send('OK');
       })
       .catch(function (error) {
-        console.log('ERROR trying to send from DLR!', JSON.stringify(error));
-        res.status(error.status).send(error.statusText);
+        console.log('💡 ERROR trying to send from DLR!', JSON.stringify(error));
+        console.log('💡 error.code', error.code);
+        console.log('💡 error.status', error.status); // Always undefined. Should be 404
+        res.status(404).send('ERR_BAD_REQUEST');
       });
   }
 
@@ -155,12 +156,7 @@ app.get('/webhooks/inbound', async (req, res) => {
   // }
 
   // DELETE ALL EXPIRED ENTRIES BEFORE SEARCHING
-  const isExpired = await deleteExpiredEntries();
-  if (isExpired) {
-    console.log('isExpired True:', isExpired);
-  } else {
-    console.log('isExpired False:', isExpired);
-  }
+  await deleteExpiredEntries(); // { acknowledged: true, deletedCount: 0 }
 
   // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
   let msisdn = req.query.msisdn;
@@ -222,19 +218,20 @@ app.get('/webhooks/inbound', async (req, res) => {
     data: data,
   };
 
-  // TO DO: SEND 200 IF SUCCESS OR 400??? IF FAIL
+  // TO DO: IF FAILS TO SEND, WHAT TO SEND BACK, 400?
   axios(config)
     .then(function (response) {
       // console.log(JSON.stringify(response.data));
-      console.log(response.status); // 200
-      console.log(response.statusText); // OK
+      console.log('SUCCESS sending from INBOUND!', JSON.stringify(response));
+      console.log('💡 status', response.status); // 200
+      console.log('💡 statusText', response.statusText); // OK
       res.status(response.status).send(response.statusText);
     })
     .catch(function (error) {
-      console.log('ERROR trying to send from Inbound!', JSON.stringify(error));
-      console.log('Code:', error.code);
-      // console.log('Status:', error.status); // undefined
-      res.status(404).send(error.code);
+      console.log('ERROR trying to send from INBOUND!', JSON.stringify(error));
+      console.log('💡 error.code', error.code); // ERR_BAD_REQUEST
+      console.log('💡 error.status', error.status); // Always undefined. Should be 404
+      res.status(404).send('ERR_BAD_REQUEST');
     });
 
   // res.status(200).send('OK');
