@@ -1,4 +1,4 @@
-import { Messages, Scheduler, Voice, neru } from 'neru-alpha';
+import { Messages, Scheduler, State, Voice, neru } from 'neru-alpha';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -18,11 +18,6 @@ app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
 const PORT = process.env.NERU_APP_PORT || 5001;
-
-// How we get environment variables from neru.yml file - generated from running "neru init"
-const { DB_NAME, DB_COLLECTION, MONGO_DB_PASSWORD } = JSON.parse(
-  process.env['NERU_CONFIGURATIONS']
-);
 
 // Gets the URL from proccess.env properties, so ejs can use it .
 if (process.env.DEBUG == 'true') {
@@ -44,6 +39,13 @@ app.get('/_/health', async (req, res, next) => {
 app.get('/', (req, res) => {
   console.log('get home page');
   res.status(200).send('Hello from Neru');
+});
+
+app.post('/cleanup', async (req, res) => {
+  const state = neru.getGlobalState();
+  console.log('cleanup job executed', req.body);
+  await state.del(req.body.key);
+  res.status(200).send('OK');
 });
 
 const addHours = (numOfHours, date = new Date()) => {
@@ -71,6 +73,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
   // CREATE EXPIRED TIME BY ADDING 24 HOURS TO CURRENT TIME
   let date = new Date();
   let expiredDate = addHours(24, date); // to test delete: 0.016 is a minute
+  const state = neru.getGlobalState();
 
   // SEND TO DB
   let dbPayload = {
@@ -125,8 +128,38 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
       res.status(response.status).send('OK');
     })
     .then(() => {
-      let dbResult = insertEntry(dbPayload);
-      console.log('Entry created:', dbResult);
+      const scheduler = new Scheduler(neru.createSession());
+      const reminderTime = new Date(
+        //  new Date().setHours(new Date().getHours() + 24)
+        new Date().setMinutes(new Date().getMinutes() + 1)
+      ).toISOString();
+      const payloadKey = `${req.query.msisdn}`;
+      console.log('scheduled setup', reminderTime);
+      scheduler
+        .startAt({
+          startAt: reminderTime,
+          callback: 'cleanup',
+          payload: {
+            key: payloadKey,
+          },
+        })
+        .execute()
+        .then(() => {
+          console.log('session saved!');
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+
+      console.log('session saving started', req.query.msisdn);
+      state
+        .set(payloadKey, dbPayload)
+        .then(() => {
+          console.log('session saved!');
+        })
+        .catch((error) => {
+          console.log(error);
+        });
     })
     .catch((error) => {
       console.log('💡 ERROR SENDING DLR', error);
@@ -151,7 +184,7 @@ app.get('/webhooks/inbound', async (req, res) => {
   // }
 
   // DELETE ALL EXPIRED ENTRIES BEFORE SEARCHING
-  await deleteExpiredEntries(); // { acknowledged: true, deletedCount: 0 }
+  // await deleteExpiredEntries(); // { acknowledged: true, deletedCount: 0 }
 
   // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
   let msisdn = req.query.msisdn;
@@ -163,12 +196,15 @@ app.get('/webhooks/inbound', async (req, res) => {
   let messageTimestamp = req.query['message-timestamp'];
   let apiKey = req.query.apiKey;
 
+  const state = neru.getGlobalState();
+  const foundEntry = await state.get(`${req.query.msisdn}`);
+  console.log('record retrieved:', foundEntry, req.query.msisdn);
   // SEACH ALL UNEXPIRED ENTRIES
-  let foundEntry = await findOneEntry({
-    msisdn: req.query.msisdn,
-    to: req.query.to,
-    apiKey: req.query['api-key'],
-  });
+  // let foundEntry = await findOneEntry({
+  //   msisdn: req.query.msisdn,
+  //   to: req.query.to,
+  //   apiKey: req.query['api-key'],
+  // });
 
   // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT ADD IT AND JUST PASS ALONG REQ.QUERY PARAMS.
   let inboundPayload = null;
