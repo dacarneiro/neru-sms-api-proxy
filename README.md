@@ -1,5 +1,16 @@
 # neru-sms-api-proxy
 
+## To run app
+
+1. Install dependencies `npm install`
+2. Use NGROK to start `EXTERNAL_SERVER` from inside the folder `sendSMS` by running `ngrok http 5001` and `nodemon server.js`
+3. Neru deploy `neru deploy`. Save url and edit in Vonage Application settings.
+4. Set `API Settings` at Vonage Dashboard to `SMS API` and `GET`. Add `neru deploy` URL.
+5. Send an outbound SMS `node send-sms-axios.js`
+6. Respond to the sms with an inbound reply.
+
+## Notes
+
 Store client_ref inside the DLR endpoint and schedule to delete it.
 
 ```js
