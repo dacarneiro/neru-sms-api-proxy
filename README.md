@@ -58,11 +58,11 @@ https://NERU-DEPLOY-URL/webhooks/delivery-receipt
 INBOUND:
 https://NERU-DEPLOY-URL/webhooks/inbound
 
-2 Requests are made to allow another server to recieve message payload. Replace the Server URL with your own. E.g.
+2 Requests are made `EXTERNAL_SERVER` to recieve message payload. Replace the `EXTERNAL_SERVER` with your own. E.g.
 
 ```js
-// from-dlr
-'http://kittphi.ngrok.io/from-dlr';
-// from-inbound
-'http://kittphi.ngrok.io/from-inbound';
+//e.g...
+const EXTERNAL_SERVER = 'http://kittphi.ngrok.io';
+
+`${EXTERNAL_SERVER}/from-dlr`and`${EXTERNAL_SERVER}/from-inbound`;
 ```

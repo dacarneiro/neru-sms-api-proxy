@@ -1,4 +1,4 @@
-import { Messages, Scheduler, State, Voice, neru } from 'neru-alpha';
+import { Scheduler, neru } from 'neru-alpha';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -10,11 +10,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static('public'));
-app.set('view engine', 'ejs');
 
 const PORT = process.env.NERU_APP_PORT || 5001;
 
-// Gets the URL from proccess.env properties, so ejs can use it .
+const EXTERNAL_SERVER = 'http://kittphi.ngrok.io';
+
 if (process.env.DEBUG == 'true') {
   console.log('🚀 Debug');
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
@@ -77,7 +77,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     messageTimestamp: req.query['message-timestamp'],
   };
 
-  // SEND TO MUTANT
+  // SEND TO EXTERNAL_SERVER
   let dlrPayload = {
     msisdn: req.query.msisdn,
     to: req.query.to,
@@ -92,13 +92,13 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     messageTimestamp: req.query['message-timestamp'],
   };
 
-  // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
-  // GET RESPONSE FROM MUTANT
+  // MAKE ANOTHER REQUEST TO SEND DLR TO EXTERNAL_URL
+  // GET RESPONSE FROM EXTERNAL_URL
   var data = JSON.stringify(dlrPayload);
 
   var config = {
     method: 'post',
-    url: 'http://kittphi.ngrok.io/from-dlr',
+    url: `${EXTERNAL_SERVER}/from-dlr`,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -114,6 +114,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
       res.status(response.status).send('OK');
     })
     .then(() => {
+      // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS MSISDN
       const scheduler = new Scheduler(neru.createSession());
       const reminderTime = new Date(
         new Date().setHours(new Date().getHours() + 24)
@@ -154,7 +155,7 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     });
 });
 
-// 2. Get client-ref from mongodb and send it to prefered endpoint
+// 2. Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
   // console.log('INBOUND', req.query);
 
@@ -168,9 +169,6 @@ app.get('/webhooks/inbound', async (req, res) => {
   //   'api-key': '4f2ff535',
   //   'message-timestamp': '2022-08-08 20:27:10'
   // }
-
-  // DELETE ALL EXPIRED ENTRIES BEFORE SEARCHING
-  // await deleteExpiredEntries(); // { acknowledged: true, deletedCount: 0 }
 
   // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
   let msisdn = req.query.msisdn;
@@ -221,7 +219,7 @@ app.get('/webhooks/inbound', async (req, res) => {
 
   var config = {
     method: 'post',
-    url: 'http://kittphi.ngrok.io/from-inbound',
+    url: `${EXTERNAL_SERVER}/from-inbound`,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
