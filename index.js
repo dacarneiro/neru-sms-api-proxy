@@ -3,11 +3,6 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import axios from 'axios';
-import {
-  deleteExpiredEntries,
-  findOneEntry,
-  insertEntry,
-} from './database/mongodb.js';
 const app = express();
 app.use(express.json());
 app.use(morgan('dev'));
@@ -48,11 +43,6 @@ app.post('/cleanup', async (req, res) => {
   res.status(200).send('OK');
 });
 
-const addHours = (numOfHours, date = new Date()) => {
-  date.setTime(date.getTime() + numOfHours * 60 * 60 * 1000);
-  return date.toISOString();
-};
-
 // 1. Get client-ref from request and store it for later use.
 app.get('/webhooks/delivery-receipt', async (req, res) => {
   // console.log('DLR', req.query);
@@ -70,9 +60,6 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
   //   'message-timestamp': '2022-08-08 20:36:42'
   // }
 
-  // CREATE EXPIRED TIME BY ADDING 24 HOURS TO CURRENT TIME
-  let date = new Date();
-  let expiredDate = addHours(24, date); // to test delete: 0.016 is a minute
   const state = neru.getGlobalState();
 
   // SEND TO DB
@@ -88,7 +75,6 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     clientRef: req.query['client-ref'],
     apiKey: req.query['api-key'],
     messageTimestamp: req.query['message-timestamp'],
-    date: expiredDate,
   };
 
   // SEND TO MUTANT
@@ -130,8 +116,8 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     .then(() => {
       const scheduler = new Scheduler(neru.createSession());
       const reminderTime = new Date(
-        //  new Date().setHours(new Date().getHours() + 24)
-        new Date().setMinutes(new Date().getMinutes() + 1)
+        new Date().setHours(new Date().getHours() + 24)
+        // new Date().setMinutes(new Date().getMinutes() + 1)
       ).toISOString();
       const payloadKey = `${req.query.msisdn}`;
       console.log('scheduled setup', reminderTime);
@@ -199,12 +185,6 @@ app.get('/webhooks/inbound', async (req, res) => {
   const state = neru.getGlobalState();
   const foundEntry = await state.get(`${req.query.msisdn}`);
   console.log('record retrieved:', foundEntry, req.query.msisdn);
-  // SEACH ALL UNEXPIRED ENTRIES
-  // let foundEntry = await findOneEntry({
-  //   msisdn: req.query.msisdn,
-  //   to: req.query.to,
-  //   apiKey: req.query['api-key'],
-  // });
 
   // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT ADD IT AND JUST PASS ALONG REQ.QUERY PARAMS.
   let inboundPayload = null;
@@ -251,7 +231,6 @@ app.get('/webhooks/inbound', async (req, res) => {
 
   axios(config)
     .then(function (response) {
-      // console.log(JSON.stringify(response.data));
       console.log('SUCCESS sending from INBOUND!');
       console.log('💡 status', response.status); // 200
       console.log('💡 statusText', response.statusText); // OK
