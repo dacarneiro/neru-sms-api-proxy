@@ -62,7 +62,6 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
 
   const state = neru.getGlobalState();
 
-  // SEND TO DB
   let dbPayload = {
     msisdn: req.query.msisdn,
     to: req.query.to,
@@ -77,24 +76,9 @@ app.get('/webhooks/delivery-receipt', async (req, res) => {
     messageTimestamp: req.query['message-timestamp'],
   };
 
-  // SEND TO EXTERNAL_SERVER
-  let dlrPayload = {
-    msisdn: req.query.msisdn,
-    to: req.query.to,
-    networkCode: req.query['network-code'],
-    messageId: req.query.messageId,
-    price: req.query.price,
-    status: req.query.status,
-    scts: req.query.scts,
-    errCode: req.query['err-code'],
-    clientRef: req.query['client-ref'],
-    apiKey: req.query['api-key'],
-    messageTimestamp: req.query['message-timestamp'],
-  };
-
-  // MAKE ANOTHER REQUEST TO SEND DLR TO EXTERNAL_URL
+  // MAKE A REQUEST TO SEND DLR TO EXTERNAL_URL
   // GET RESPONSE FROM EXTERNAL_URL
-  var data = JSON.stringify(dlrPayload);
+  var data = JSON.stringify(dbPayload);
 
   var config = {
     method: 'post',
