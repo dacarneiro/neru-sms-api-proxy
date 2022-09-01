@@ -50,6 +50,102 @@ app.post('/cleanup', async (req, res) => {
   res.status(200).send('OK');
 });
 
+// 2. TODO: DON'T SAVE CLIENT REF, PASS CLIENT_REF JUST FORWAD TO MUTANT
+// app.get('/webhooks/delivery-receipt', async (req, res) => {
+//   // console.log('DLR', req.query);
+//   // DLR {
+//   //   msisdn: '15754947093',
+//   //   to: '19899450176',
+//   //   'network-code': '72405',
+//   //   messageId: '75e3f2d6-814b-49d2-bf3c-c19fb3b46515',
+//   //   price: '0.04870000',
+//   //   status: 'delivered',
+//   //   scts: '2208082036',
+//   //   'err-code': '0',
+//   //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"
+//   //   'api-key': '0759237b',
+//   //   'message-timestamp': '2022-08-08 20:36:42'
+//   // }
+
+//   const state = neru.getGlobalState();
+
+//   let dbPayload = {
+//     msisdn: req.query.msisdn,
+//     to: req.query.to,
+//     networkCode: req.query['network-code'],
+//     messageId: req.query.messageId,
+//     price: req.query.price,
+//     status: req.query.status,
+//     scts: req.query.scts,
+//     errCode: req.query['err-code'],
+//     clientRef: req.query['client-ref'],
+//     apiKey: req.query['api-key'],
+//     messageTimestamp: req.query['message-timestamp'],
+//   };
+
+//   // MAKE A REQUEST TO SEND DLR TO EXTERNAL_URL
+//   // GET RESPONSE FROM EXTERNAL_URL
+//   var data = JSON.stringify(dbPayload);
+
+//   var config = {
+//     method: 'post',
+//     url: `${EXTERNAL_SERVER}/from-dlr`,
+//     headers: {
+//       'Content-Type': 'application/json',
+//       Accept: 'application/json',
+//     },
+//     data: data,
+//   };
+
+//   axios(config)
+//     .then((response) => {
+//       console.log('💡 SUCCESS DLR');
+//       console.log('💡 status', response.status); // 200
+//       console.log('💡 statusText', response.statusText); // OK
+//       res.status(response.status).send('OK');
+//     })
+//     .then(() => {
+//       // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS MSISDN
+//       const scheduler = new Scheduler(neru.createSession());
+//       const reminderTime = new Date(
+//         new Date().setHours(new Date().getHours() + 24)
+//         // new Date().setMinutes(new Date().getMinutes() + 1)
+//       ).toISOString();
+//       const payloadKey = `${req.query.msisdn}`;
+//       console.log('scheduled setup', reminderTime);
+//       scheduler
+//         .startAt({
+//           startAt: reminderTime,
+//           callback: 'cleanup',
+//           payload: {
+//             key: payloadKey,
+//           },
+//         })
+//         .execute()
+//         .then(() => {
+//           console.log('session saved!');
+//         })
+//         .catch((error) => {
+//           console.log(error);
+//         });
+
+//       console.log('session saving started', req.query.msisdn);
+//       state
+//         .set(payloadKey, dbPayload)
+//         .then(() => {
+//           console.log('session saved!');
+//         })
+//         .catch((error) => {
+//           console.log(error);
+//         });
+//     })
+//     .catch((error) => {
+//       console.log('💡 ERROR SENDING DLR', error);
+//       console.log('💡 error.code', error.code);
+//       res.status(404).send('ERR_BAD_REQUEST');
+//     });
+// });
+
 // 3. Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
   // console.log('INBOUND', req.query);
@@ -130,36 +226,25 @@ app.get('/webhooks/inbound', async (req, res) => {
       res.status(response.status).send(response.statusText);
     })
     .catch(function (error) {
-      console.log('ERROR trying to send from INBOUND!', error);
+      console.log('ERROR trying to send from INBOUND!');
       console.log('💡 error.code', error.code); // ERR_BAD_REQUEST
       console.log('💡 error.status', error.status); // Always undefined. Should be 404
       res.status(404).send('ERR_BAD_REQUEST');
     });
 });
 
-// 1. FROM MUTANT - SAVE CLIENT REF
+// 1. FROM MUTANT - TODO SAVE CLIENT REF
 app.post('/sms/json', async (req, res) => {
   console.log('/sms/json', req.body);
 
-  // INSTANTIATE THE NERU GLOBAL STATE
-  const state = neru.getGlobalState();
-  let dbPayload = {
-    // api_key: req.body['api_key'],
-    // api_secret: req.body['api_secret'],
-    to: req.body.to,
-    from: req.body.from,
-    text: req.body.text,
-    clientRef: req.body['client-ref'],
-  };
-
-  // A. NEW POST REQUEST TO VONAGE https://rest.nexmo.com/sms/json
+  // 1. NEW POST REQUEST TO VONAGE https://rest.nexmo.com/sms/json
   var data = JSON.stringify({
-    api_key: req.body['api_key'],
-    api_secret: req.body['api_secret'],
+    api_key: VONAGE_API_KEY,
+    'client-ref': req.body['client-ref'],
+    api_secret: VONAGE_API_SECRET,
     to: req.body.to,
     from: req.body.from,
     text: req.body.text,
-    'client-ref': req.body['client-ref'],
   });
 
   var config = {
@@ -174,14 +259,14 @@ app.post('/sms/json', async (req, res) => {
   axios(config)
     .then(function (response) {
       console.log(JSON.stringify(response.data));
-      // B. IF SUCCESS - SAVE CLIENT_REF HERE.
-      // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS TO NUMBER
+      // 2. IF SUCCESS - SAVE CLIENT_REF HERE. NOT THE DLR ENDPOINT ABOVE
+      // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS MSISDN
       const scheduler = new Scheduler(neru.createSession());
       const reminderTime = new Date(
         new Date().setHours(new Date().getHours() + 24)
         // new Date().setMinutes(new Date().getMinutes() + 1)
       ).toISOString();
-      const payloadKey = `${req.body.to}`;
+      const payloadKey = `${req.body.msisdn}`;
       console.log('scheduled setup', reminderTime);
       scheduler
         .startAt({
@@ -193,22 +278,23 @@ app.post('/sms/json', async (req, res) => {
         })
         .execute()
         .then(() => {
-          console.log('session saving started...', req.body.to);
-          state.set(payloadKey, dbPayload).then(() => {
-            console.log('session saved!');
-          });
+          console.log('session saved!');
         })
         .catch((error) => {
           console.log(error);
         });
 
+      console.log('session saving started', req.body.msisdn);
+      state.set(payloadKey, dbPayload).then(() => {
+        console.log('session saved!');
+      });
       // GET RESPONSE FROM VONAGE THEN SEND IT TO MUTANT
       res.status(response.status).send(response.data);
       // {"messages":[{"to":"15754947093","message-id":"46da5047-158e-4571-923e-5478f2e54913","status":"0","remaining-balance":"70.81686346","message-price":"0.00952000","network":"310090","client-ref":"{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"}],"message-count":"1"}
     })
     .catch(function (error) {
       console.log(error);
-      // C. IF FAILED SEND RESPONSE TO VONAGE
+      // 3. IF FAILED SEND RESPONSE TO VONAGE
       res.status(404).send(error.data);
     });
 });
