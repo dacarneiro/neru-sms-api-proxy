@@ -1,13 +1,10 @@
-import { Messages, Scheduler, Voice, neru } from 'neru-alpha';
+import dotenv from 'dotenv';
+import { Scheduler, neru } from 'neru-alpha';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import axios from 'axios';
-import {
-  deleteExpiredEntries,
-  findOneEntry,
-  insertEntry,
-} from './database/mongodb.js';
+dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(morgan('dev'));
@@ -15,16 +12,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static('public'));
-app.set('view engine', 'ejs');
 
 const PORT = process.env.NERU_APP_PORT || 5001;
 
-// How we get environment variables from neru.yml file - generated from running "neru init"
-const { DB_NAME, DB_COLLECTION, MONGO_DB_PASSWORD } = JSON.parse(
-  process.env['NERU_CONFIGURATIONS']
-);
+// TODO: TELL MUTANT TO UPDATE SERVER_URL
+const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
 
-// Gets the URL from proccess.env properties, so ejs can use it .
 if (process.env.DEBUG == 'true') {
   console.log('🚀 Debug');
   // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
@@ -46,98 +39,16 @@ app.get('/', (req, res) => {
   res.status(200).send('Hello from Neru');
 });
 
-const addHours = (numOfHours, date = new Date()) => {
-  date.setTime(date.getTime() + numOfHours * 60 * 60 * 1000);
-  return date.toISOString();
-};
-
-// 1. Get client-ref from request and store it for later use.
-app.get('/webhooks/delivery-receipt', async (req, res) => {
-  // console.log('DLR', req.query);
-  // DLR {
-  //   msisdn: '15754947093',
-  //   to: '19899450176',
-  //   'network-code': '72405',
-  //   messageId: '75e3f2d6-814b-49d2-bf3c-c19fb3b46515',
-  //   price: '0.04870000',
-  //   status: 'delivered',
-  //   scts: '2208082036',
-  //   'err-code': '0',
-  //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"
-  //   'api-key': '0759237b',
-  //   'message-timestamp': '2022-08-08 20:36:42'
-  // }
-
-  // CREATE EXPIRED TIME BY ADDING 24 HOURS TO CURRENT TIME
-  let date = new Date();
-  let expiredDate = addHours(24, date); // to test delete: 0.016 is a minute
-
-  // SEND TO DB
-  let dbPayload = {
-    msisdn: req.query.msisdn,
-    to: req.query.to,
-    networkCode: req.query['network-code'],
-    messageId: req.query.messageId,
-    price: req.query.price,
-    status: req.query.status,
-    scts: req.query.scts,
-    errCode: req.query['err-code'],
-    clientRef: req.query['client-ref'],
-    apiKey: req.query['api-key'],
-    messageTimestamp: req.query['message-timestamp'],
-    date: expiredDate,
-  };
-
-  // SEND TO MUTANT
-  let dlrPayload = {
-    msisdn: req.query.msisdn,
-    to: req.query.to,
-    networkCode: req.query['network-code'],
-    messageId: req.query.messageId,
-    price: req.query.price,
-    status: req.query.status,
-    scts: req.query.scts,
-    errCode: req.query['err-code'],
-    clientRef: req.query['client-ref'],
-    apiKey: req.query['api-key'],
-    messageTimestamp: req.query['message-timestamp'],
-  };
-
-  // MAKE ANOTHER REQUEST TO SEND DLR TO MUTANT
-  // GET RESPONSE FROM MUTANT
-  var data = JSON.stringify(dlrPayload);
-
-  var config = {
-    method: 'post',
-    url: 'http://kittphi.ngrok.io/from-dlr',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    data: data,
-  };
-
-  axios(config)
-    .then((response) => {
-      console.log('💡 SUCCESS DLR');
-      console.log('💡 status', response.status); // 200
-      console.log('💡 statusText', response.statusText); // OK
-      res.status(response.status).send('OK');
-    })
-    .then(() => {
-      let dbResult = insertEntry(dbPayload);
-      console.log('Entry created:', dbResult);
-    })
-    .catch((error) => {
-      console.log('💡 ERROR SENDING DLR', error);
-      console.log('💡 error.code', error.code);
-      res.status(404).send('ERR_BAD_REQUEST');
-    });
+app.post('/cleanup', async (req, res) => {
+  const state = neru.getGlobalState();
+  console.log('cleanup job executed', req.body);
+  await state.del(req.body.key);
+  res.status(200).send('OK');
 });
 
-// 2. Get client-ref from mongodb and send it to prefered endpoint
+// 3. Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
-  // console.log('INBOUND', req.query);
+  console.log('INBOUND', req.query);
 
   // INBOUND {
   //   msisdn: '15754947093',
@@ -146,12 +57,9 @@ app.get('/webhooks/inbound', async (req, res) => {
   //   text: 'Hello',
   //   type: 'text',
   //   keyword: 'HELLO',
-  //   'api-key': '4f2ff535',
+  //   'api-key': '',
   //   'message-timestamp': '2022-08-08 20:27:10'
   // }
-
-  // DELETE ALL EXPIRED ENTRIES BEFORE SEARCHING
-  await deleteExpiredEntries(); // { acknowledged: true, deletedCount: 0 }
 
   // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
   let msisdn = req.query.msisdn;
@@ -163,12 +71,9 @@ app.get('/webhooks/inbound', async (req, res) => {
   let messageTimestamp = req.query['message-timestamp'];
   let apiKey = req.query.apiKey;
 
-  // SEACH ALL UNEXPIRED ENTRIES
-  let foundEntry = await findOneEntry({
-    msisdn: req.query.msisdn,
-    to: req.query.to,
-    apiKey: req.query['api-key'],
-  });
+  const state = neru.getGlobalState();
+  const foundEntry = await state.get(`${req.query.msisdn}`);
+  console.log('record retrieved:', foundEntry, req.query.msisdn);
 
   // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT ADD IT AND JUST PASS ALONG REQ.QUERY PARAMS.
   let inboundPayload = null;
@@ -205,7 +110,7 @@ app.get('/webhooks/inbound', async (req, res) => {
 
   var config = {
     method: 'post',
-    url: 'http://kittphi.ngrok.io/from-inbound',
+    url: `${EXTERNAL_SERVER}`,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -215,17 +120,100 @@ app.get('/webhooks/inbound', async (req, res) => {
 
   axios(config)
     .then(function (response) {
-      // console.log(JSON.stringify(response.data));
       console.log('SUCCESS sending from INBOUND!');
       console.log('💡 status', response.status); // 200
       console.log('💡 statusText', response.statusText); // OK
       res.status(response.status).send(response.statusText);
     })
     .catch(function (error) {
-      console.log('ERROR trying to send from INBOUND!');
+      console.log('ERROR trying to send from INBOUND!', error);
       console.log('💡 error.code', error.code); // ERR_BAD_REQUEST
       console.log('💡 error.status', error.status); // Always undefined. Should be 404
       res.status(404).send('ERR_BAD_REQUEST');
+    });
+});
+
+// 1. FROM MUTANT - SAVE CLIENT REF
+app.post('/sms/json', async (req, res) => {
+  console.log('/sms/json', req.body);
+  // /sms/json {
+  //   "api_key": "",
+  //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
+  //   "api_secret": "",
+  //   "to": "15754947093",
+  //   "from": "19899450176",
+  //   "text": "This is an outgoing sms"
+  // }
+
+  // INSTANTIATE THE NERU GLOBAL STATE
+  const state = neru.getGlobalState();
+  let dbPayload = {
+    // api_key: req.body['api_key'],
+    // api_secret: req.body['api_secret'],
+    to: req.body.to,
+    from: req.body.from,
+    text: req.body.text,
+    clientRef: req.body['client-ref'],
+  };
+
+  // A. NEW POST REQUEST TO VONAGE https://rest.nexmo.com/sms/json
+  var data = JSON.stringify({
+    api_key: req.body['api_key'],
+    api_secret: req.body['api_secret'],
+    to: req.body.to,
+    from: req.body.from,
+    text: req.body.text,
+    'client-ref': req.body['client-ref'],
+  });
+
+  var config = {
+    method: 'post',
+    url: 'https://rest.nexmo.com/sms/json',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    data: data,
+  };
+  axios(config)
+    .then(function (response) {
+      console.log(JSON.stringify(response.data));
+      // B. IF SUCCESS - SAVE CLIENT_REF HERE.
+      // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS TO NUMBER
+      const scheduler = new Scheduler(neru.createSession());
+      const reminderTime = new Date(
+        new Date().setHours(new Date().getHours() + 24)
+        // new Date().setMinutes(new Date().getMinutes() + 1)
+      ).toISOString();
+      const payloadKey = `${req.body.to}`;
+      console.log('scheduled setup', reminderTime);
+      scheduler
+        .startAt({
+          startAt: reminderTime,
+          callback: 'cleanup',
+          payload: {
+            key: payloadKey,
+          },
+        })
+        .execute()
+        .then(() => {
+          console.log('session saving started...', req.body.to);
+          state.set(payloadKey, dbPayload).then(() => {
+            console.log('session saved!');
+          });
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+
+      // GET RESPONSE FROM VONAGE THEN SEND IT TO MUTANT
+      res.status(response.status).send(response.data);
+      // {"messages":[{"to":"15754947093","message-id":"46da5047-158e-4571-923e-5478f2e54913","status":"0","remaining-balance":"70.81686346","message-price":"0.00952000","network":"310090","client-ref":"{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"}],"message-count":"1"}
+    })
+    .catch(function (error) {
+      console.log(error);
+      // C. IF FAILED SEND RESPONSE TO VONAGE
+      res.status(404).send(error.data);
     });
 });
 
