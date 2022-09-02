@@ -14,10 +14,6 @@ app.use(cookieParser());
 app.use(express.static('public'));
 
 const PORT = process.env.NERU_APP_PORT || 5001;
-const VONAGE_API_KEY = process.env.VONAGE_API_KEY;
-const VONAGE_API_SECRET = process.env.VONAGE_API_SECRET;
-const TO_NUMBER = process.env.TO_NUMBER;
-const FROM_NUMBER = process.env.FROM_NUMBER;
 
 // TODO: TELL MUTANT TO UPDATE SERVER_URL
 const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
@@ -52,7 +48,7 @@ app.post('/cleanup', async (req, res) => {
 
 // 3. Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
-  // console.log('INBOUND', req.query);
+  console.log('INBOUND', req.query);
 
   // INBOUND {
   //   msisdn: '15754947093',
@@ -61,7 +57,7 @@ app.get('/webhooks/inbound', async (req, res) => {
   //   text: 'Hello',
   //   type: 'text',
   //   keyword: 'HELLO',
-  //   'api-key': '4f2ff535',
+  //   'api-key': '',
   //   'message-timestamp': '2022-08-08 20:27:10'
   // }
 
@@ -140,6 +136,14 @@ app.get('/webhooks/inbound', async (req, res) => {
 // 1. FROM MUTANT - SAVE CLIENT REF
 app.post('/sms/json', async (req, res) => {
   console.log('/sms/json', req.body);
+  // /sms/json {
+  //   "api_key": "",
+  //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
+  //   "api_secret": "",
+  //   "to": "15754947093",
+  //   "from": "19899450176",
+  //   "text": "This is an outgoing sms"
+  // }
 
   // INSTANTIATE THE NERU GLOBAL STATE
   const state = neru.getGlobalState();

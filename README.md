@@ -3,15 +3,15 @@
 ## To run app
 
 1. Install dependencies `npm install` at root and also inside `sendSMS` folder.
-2. Use NGROK to start `EXTERNAL_SERVER` from inside the folder `sendSMS` by running `ngrok http 5001` and `nodemon server.js`
+2. Simulate an external server from `./externalServer` folder and use NGROK `ngrok http 5001` and start the server via `nodemon server.js`
 3. Setup Neru, please see Neru Getting Started. `neru configure` and `neru init`.
 4. Neru deploy `neru deploy`. Save the URL.
-5. Set `API Settings` at Vonage Dashboard API Settings to `SMS API` and `GET`. Add `NERU_URL/webhooks/inbound`.
-6. Start an External Server for testing via `ngork http 5001` and `nodemon ./sendSMS/server.js`
-7. Send an outbound SMS `node ./sendSMS/send-sms-axios.js`
-8. Respond to the sms with an inbound reply.
+5. Set `API Settings` at Vonage Dashboard API Settings to `SMS API` and `GET`.
+6. Set DLR webhook to your NGROK URL `NGROK_URL/webhooks/dlr` and Inbound URL to `NERU_URL/webhooks/inbound` (This allows Neru to act as a Proxy to add `client_ref`).
+7. Send an MT outbound SMS `node ./externalServer/send-sms-axios.js`.
+8. Respond to the SMS with a MO inbound reply.
 
-## Notes of steps:
+## Notes
 
 Step 1: Send the outbound SMS as instructed above. This store client_ref inside `/sms/json` endpoint and schedules neru to delete it.
 
@@ -73,13 +73,13 @@ console.log('record retrieved:', foundEntry, req.query.msisdn);
 
 ### TODO UPDATE `EXTERNAL_SERVER`
 
-Neru acts as a Proxy. When you make an outbound SMS via `node ./sendSMS/send-sms-axios.js` a request is
+Neru acts as a Proxy. When you make an outbound SMS via `node ./externalServer/send-sms-axios.js` a request is
 made to the Neru `/sms/json` endpoint. Inside there a subsequent request is made to
 vonage `https://rest.nexmo.com/sms/json`. Only if the message is successfully sent to Vonage will the
 `cient_ref` be saved.
 
-Note: Edit the `EXTERNAL_SERVER` to reflect your server that handles DLR and Inbound.
-Please see `./sendSMS/server.js` for example. Run `nodemon ./sendSMS/server.js` when testing.
+Note: Edit the `EXTERNAL_SERVER` variable at `index.js` file to reflect your NGROK URL that receives DLR and Inbound.
+Please see `./externalServer/server.js` for example. Run `nodemon ./externalServer/server.js` when testing.
 
 ```js
 const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';

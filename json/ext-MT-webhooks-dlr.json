@@ -1,0 +1,13 @@
+{
+  "msisdn": "15754947093",
+  "to": "19899450176",
+  "network-code": "310090",
+  "messageId": "651cb760-617e-4099-8149-0e5448886708",
+  "price": "0.00952000",
+  "status": "delivered",
+  "scts": "2209021607",
+  "err-code": "0",
+  "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
+  "api-key": "4f2ff535",
+  "message-timestamp": "2022-09-02 16:07:06"
+}

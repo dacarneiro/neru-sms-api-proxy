@@ -45,5 +45,5 @@ app.post('/from-inbound', (req, res) => {
 // }
 
 app.listen(PORT, () => {
-  console.log(`Express listening on port ${PORT}`);
+  console.log(`External Server on port ${PORT}`);
 });

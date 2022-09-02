@@ -1,0 +1,14 @@
+{
+  "messages": [
+    {
+      "to": "15754947093",
+      "message-id": "2f08c301-47b3-4ac0-9111-45b8c0aa7787",
+      "status": "0",
+      "remaining-balance": "69.42261012",
+      "message-price": "0.00952000",
+      "network": "310090",
+      "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}"
+    }
+  ],
+  "message-count": "1"
+}
