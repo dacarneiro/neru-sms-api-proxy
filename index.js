@@ -217,6 +217,158 @@ app.post('/sms/json', async (req, res) => {
     });
 });
 
+// 1. VIDS POST TO SAVE CLIENT REF
+app.post('/vids/sms/json', async (req, res) => {
+  console.log('🚀 /vids/sms/json', req.body);
+  // /sms/json {
+  //   "api_key": "",
+  //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
+  //   "api_secret": "",
+  //   "to": "15754947093",
+  //   "from": "19899450176",
+  //   "text": "This is an outgoing sms",
+  //   "expire": 2,
+  // }
+
+  // INSTANTIATE THE NERU GLOBAL STATE
+  const state = neru.getGlobalState();
+  let dbPayload = {
+    // api_key: req.body['api_key'],
+    // api_secret: req.body['api_secret'],
+    to: req.body.to,
+    from: req.body.from,
+    text: req.body.text,
+    clientRef: req.body['client-ref'],
+  };
+
+  // A. NEW POST REQUEST TO VONAGE https://rest.nexmo.com/sms/json
+  var data = JSON.stringify({
+    api_key: req.body['api_key'],
+    api_secret: req.body['api_secret'],
+    to: req.body.to,
+    from: req.body.from,
+    text: req.body.text,
+    'client-ref': req.body['client-ref'],
+  });
+
+  var config = {
+    method: 'post',
+    url: 'https://rest.nexmo.com/sms/json',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    data: data,
+  };
+  axios(config)
+    .then(function (response) {
+      console.log(JSON.stringify(response.data));
+      // B. IF SUCCESS - SAVE CLIENT_REF HERE.
+      // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS TO NUMBER
+      const scheduler = new Scheduler(neru.createSession());
+      const reminderTime = new Date(
+        // new Date().setHours(new Date().getHours() + 24)
+        new Date().setMinutes(new Date().getMinutes() + 1)
+        // new Date().setMinutes(new Date().getMinutes() + req.body.expire)
+      ).toISOString();
+      const payloadKey = `${req.body.to}`;
+      console.log('✅ Scheduled cleanup', reminderTime.toLocaleString());
+      scheduler
+        .startAt({
+          startAt: reminderTime,
+          callback: 'cleanup',
+          payload: {
+            key: payloadKey,
+          },
+        })
+        .execute()
+        .then(() => {
+          console.log('session saving started...', req.body.to);
+          state.set(payloadKey, dbPayload).then(() => {
+            console.log('session saved!');
+          });
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+
+      // GET RESPONSE FROM VONAGE THEN SEND IT TO MUTANT
+      res.status(response.status).send(response.data);
+      // {"messages":[{"to":"15754947093","message-id":"46da5047-158e-4571-923e-5478f2e54913","status":"0","remaining-balance":"70.81686346","message-price":"0.00952000","network":"310090","client-ref":"{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"}],"message-count":"1"}
+    })
+    .catch(function (error) {
+      console.log(error);
+      // C. IF FAILED SEND RESPONSE TO VONAGE
+      res.status(404).send(error.data);
+    });
+});
+
+// 2. VIDS INBOUND TO RETRIEVE CLIENT REF
+app.post('/vids/inbound', async (req, res) => {
+  console.log('🚀 /vids/inboud', req.body);
+
+  // INBOUND {
+  //   msisdn: '15754947093',
+  //   to: '12016279133',
+  //   messageId: '3000000013D6AB85',
+  //   text: 'Hello',
+  //   type: 'text',
+  //   keyword: 'HELLO',
+  //   'api-key': '',
+  //   'message-timestamp': '2022-09-26T20:36:25Z'
+  // }
+
+  // SAVE IN MEMORY TO PASS TO OTHER INBOUND URL
+  let msisdn = req.body.msisdn;
+  let to = req.body.to;
+  let messageId = req.body.messageId;
+  let text = req.body.text;
+  let type = req.body.type;
+  let keyword = req.body.keyword;
+  let messageTimestamp = req.body['message-timestamp'];
+  let apiKey = req.body.apiKey;
+
+  const state = neru.getGlobalState();
+  const foundEntry = await state.get(`${req.body.msisdn}`);
+  console.log('✅ record retrieved:', foundEntry);
+  console.log('msisdn', req.body.msisdn);
+
+  // IF FOUND ENTRY ADD THE CLIENT-REF, ELSE DO NOT ADD IT AND JUST PASS ALONG REQ.QUERY PARAMS.
+  let inboundPayload = null;
+  if (foundEntry) {
+    console.log('✅ Found query match!', foundEntry);
+
+    inboundPayload = {
+      msisdn: foundEntry.msisdn,
+      to: foundEntry.to,
+      messageId: messageId,
+      text: text,
+      type: type,
+      keyword: keyword,
+      'api-key': foundEntry.apiKey,
+      'client-ref': foundEntry.clientRef,
+      ['message-timestamp']: messageTimestamp,
+    };
+  } else {
+    console.log('❌ Did not find query match!', foundEntry);
+    inboundPayload = {
+      msisdn: msisdn,
+      to: to,
+      messageId: messageId,
+      text: text,
+      type: type,
+      keyword: keyword,
+      'api-key': apiKey,
+      ['message-timestamp']: messageTimestamp,
+    };
+  }
+
+  // RETURN RESULT TO VIDS MO REQUEST
+  var data = JSON.stringify(inboundPayload);
+
+  res.status(200).send(data);
+});
+
 app.listen(PORT, () => {
   console.log(`NERU on port ${PORT}`);
 });

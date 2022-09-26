@@ -84,3 +84,8 @@ Please see `./externalServer/server.js` for example. Run `nodemon ./externalServ
 ```js
 const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
 ```
+
+### Neru Logs
+
+Neru Project: neru-sms-api-proxy-sms-api
+Neru Instance: sms-api
