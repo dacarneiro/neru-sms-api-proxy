@@ -267,7 +267,12 @@ app.post('/vids/sms/json', async (req, res) => {
       // SCHEDULE TO DELETE STORED CLIENT_REF, THE KEY IS TO NUMBER
       const scheduler = new Scheduler(neru.createSession());
 
-      const expiredTime = req.body.time;
+      // const expiredTime = req.body.time;
+
+      const expiredTime = new Date(
+        // new Date().setHours(new Date().getHours() + 24)
+        new Date().setMinutes(new Date().getMinutes() + 1)
+      ).toISOString();
 
       const payloadKey = `${req.body.to}`;
       console.log('✅ Scheduled cleanup', expiredTime.toLocaleString());
