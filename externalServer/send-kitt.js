@@ -10,18 +10,16 @@ var data = JSON.stringify({
   'client-ref':
     "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
   api_secret: VONAGE_API_SECRET,
-  to: TO_NUMBER,
   from: FROM_NUMBER,
+  to: TO_NUMBER,
   text: 'This is an outgoing sms',
 });
 
-// TODO: SEND TO NERU - NERU_URL/sms/json
-// OLD: https://rest.nexmo.com/sms/json
-// NEW:
-// https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/sms/json
+// SEND TO NERU - NERU_URL/sms/json
 var config = {
   method: 'post',
-  url: 'https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-assets/sms/json',
+  // url: 'https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/sms/json',
+  url: 'https://rest.nexmo.com/sms/json',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

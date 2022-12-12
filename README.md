@@ -1,15 +1,36 @@
 # neru-sms-api-proxy
 
-## To run app
+## Prereq
+
+Vonage Application:
+
+1. Set API Settings to SMS
+2. Set DLR Webhook for your NGROK server. `https://NGROK_URL/webhooks/dlr` e.g. `https://kittphi.ngrok.io/webhooks/dlr`
+3. Set Inbound SMS Webhooks to your Neru Instance. e.g. `https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/webhooks/inbound`
+
+## To deploy app
 
 1. Install dependencies `npm install` at root and also inside `sendSMS` folder.
 2. Simulate an external server from `./externalServer` folder and use NGROK `ngrok http 5001` and start the server via `nodemon server.js`
-3. Setup Neru, please see Neru Getting Started. `neru configure` and `neru init`.
-4. Neru deploy `neru deploy`. Save the URL.
-5. Set `API Settings` at Vonage Dashboard API Settings to `SMS API` and `GET`.
-6. Set DLR webhook to your NGROK URL `NGROK_URL/webhooks/dlr` and Inbound URL to `NERU_URL/webhooks/inbound` (This allows Neru to act as a Proxy to add `client_ref`).
-7. Send an MT outbound SMS `node ./externalServer/send-sms-axios.js`.
-8. Respond to the SMS with a MO inbound reply.
+3. Setup Neru, please see Neru Getting Started. This allows you to link to an existing Vonage Application. In root directory: `neru configure`.
+4. You can also create a Vonage App via `neru app create --name "neru-app"`
+   1. e.g. ✅ application successfully created - application_name="neru" application_id="5f710c44-807b-4917-a5a7-b80cb4ff1826"
+5. You can set the Voange Application ID via `neru app configure`.
+   E.g. neru app configure --app-id 5f710c44-807b-4917-a5a7-b80cb4ff1826 --rtc --voice --messaging
+6. When done `neru init`
+7. Neru deploy `neru deploy`. Save the URL.
+8. Set `API Settings` at Vonage Dashboard API Settings to `SMS API` and `GET`.
+9. Set DLR webhook to your NGROK URL `NGROK_URL/webhooks/dlr` and Inbound URL to `NERU_URL/webhooks/inbound` (This allows Neru to act as a Proxy to add `client_ref`).
+
+## To demo app
+
+1. Send an MT outbound SMS `node ./externalServer/send-sms-axios.js`.
+2. Respond to the SMS with a MO inbound reply.
+3. Logss are saved to public directory by date. e.g. `DATE.txt`
+4. To view a log by date Browser: `https://NERU_URL/viewlog?date=Thu Dec 08 2022`
+   - e.g. `https://kittphi.ngrok.io/viewlog?date=Thu Dec 08 2022`
+5. To download the a text file by date in Browser: `https://NERU_URL/download?date=Thu Dec 08 2022`
+   - e.g. `https://kittphi.ngrok.io/download?date=Thu Dec 08 2022`
 
 ## Notes
 

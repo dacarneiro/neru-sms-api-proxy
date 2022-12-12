@@ -1,23 +1,25 @@
-const app = require('express')();
-const bodyParser = require('body-parser');
+const express = require('express');
+const app = express();
+const fs = require('fs/promises');
+app.use(express.static('/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const PORT = process.env.PORT || 5001;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
 app.get('/', (req, res) => {
+  console.log('/');
   res.status(200).send('Hello from Express!');
 });
 
 // Receive DLR from Vonage DLR
-app.get('/webhooks/dlr', (req, res) => {
-  console.log('webhooks/dlr:', req.query);
+app.post('/webhooks/dlr', (req, res) => {
+  console.log('webhooks/dlr:', req.body);
   res.status(200).send('OK');
 });
 
 // webhooks/dlr: {
 //   msisdn: '15754947093',
-//   to: '19899450176',
+//   to: '12013541564',
 //   'network-code': '310090',
 //   messageId: '38eef590-711f-4360-a23d-80c38291eb1d',
 //   price: '0.00952000',
@@ -29,8 +31,8 @@ app.get('/webhooks/dlr', (req, res) => {
 //   'message-timestamp': '2022-09-01 23:22:08'
 // }
 
-app.post('/from-inbound', (req, res) => {
-  console.log('from-inbound:', req.body);
+app.get('/from-inbound', (req, res) => {
+  console.log('from-inbound:', req.query);
   res.status(200).send('OK');
 });
 

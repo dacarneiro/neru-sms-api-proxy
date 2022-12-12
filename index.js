@@ -4,6 +4,9 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -12,7 +15,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static('public'));
-
 const PORT = process.env.NERU_APP_PORT || 5001;
 
 // TODO: TELL MUTANT TO UPDATE SERVER_URL
@@ -20,24 +22,37 @@ const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
 
 if (process.env.DEBUG == 'true') {
   console.log('🚀 Debug');
-  // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
 } else {
   console.log('🚀 Deploy');
-  // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/
 }
 
 var URL =
   process.env.ENDPOINT_URL_SCHEME + '/' + process.env.INSTANCE_SERVICE_NAME;
-console.log('URL:', URL);
+console.log('ℹ️ URL:', URL);
 
-app.get('/_/health', async (req, res, next) => {
-  res.send('OK');
+app.get('/_/health', async (req, res) => {
+  res.sendStatus(200);
 });
 
+// CHECK IF THERE IS A LOG FILE FOR TODAY
 app.get('/', (req, res) => {
-  console.log('get home page');
-  res.status(200).send('Hello from Neru');
+  currentDate = new Date().toDateString();
+  let logFile = `${cwd}/${currentDate}.txt`;
+  console.log('ℹ️/ logFile:', logFile);
+  let fileExists;
+  if (fs.existsSync(logFile)) {
+    fileExists = true;
+    console.log('exists:', logFile);
+  } else {
+    fileExists = false;
+    console.log('DOES NOT exist:', logFile);
+  }
+
+  res.status(200).send({ logFile: logFile, logFileExists: fileExists });
 });
+
+let cwd = process.cwd(); // NERU'S CURRENT WORKING DIRECTORY. __dirname crashes NERU
+let currentDate;
 
 app.post('/cleanup', async (req, res) => {
   const state = neru.getGlobalState();
@@ -46,13 +61,13 @@ app.post('/cleanup', async (req, res) => {
   res.status(200).send('OK');
 });
 
-// 3. Get client-ref from neru global state and send it to prefered endpoint if not expired
+// 2. Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
   console.log('INBOUND', req.query);
 
   // INBOUND {
   //   msisdn: '15754947093',
-  //   to: '19899450176',
+  //   to: '12013541564',
   //   messageId: '3000000013D6AB85',
   //   text: 'Hello',
   //   type: 'text',
@@ -141,9 +156,42 @@ app.post('/sms/json', async (req, res) => {
   //   "client-ref": "{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c57'}",
   //   "api_secret": "",
   //   "to": "15754947093",
-  //   "from": "19899450176",
+  //   "from": "12013541564",
   //   "text": "This is an outgoing sms"
   // }
+
+  let logFile;
+  (async () => {
+    try {
+      currentDate = new Date().toDateString();
+      logFile = `${cwd}/${currentDate}.txt`;
+      const content = JSON.stringify(req.body);
+      // WRITE THE REQUEST TO A LOGFILE
+      await fs.appendFile(logFile, content, (err) => {
+        if (err) {
+          console.log('Error adding content:', err);
+          res.status(400).send({ 'Error adding content': err });
+        } else {
+          console.log('Added new content');
+        }
+      });
+      // ADD A NEW LINE
+      await fs.appendFile(logFile, '\n', (err) => {
+        if (err) {
+          console.log('Error adding new line:', err);
+          res
+            .status(400)
+            .send({ 'Error adding new line:': err, logFile: logFile });
+        } else {
+          console.log('New line added');
+          res.status(200).send({ success: 'New line added', logFile: logFile });
+        }
+      });
+    } catch (err) {
+      console.log('Error writing to file:', err);
+      res.status(400).send({ 'Error writing to file:': err, logFile: logFile });
+    }
+  })();
 
   // INSTANTIATE THE NERU GLOBAL STATE
   const state = neru.getGlobalState();
@@ -215,6 +263,36 @@ app.post('/sms/json', async (req, res) => {
       // C. IF FAILED SEND RESPONSE TO VONAGE
       res.status(404).send(error.data);
     });
+});
+
+// VIEW LOG FILE BY DATE
+// https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-assets/viewlog?date=Mon Dec 12 2022
+app.get('/viewlog', (req, res, next) => {
+  let { date } = req.query;
+  console.log('/viewlog:', date);
+
+  var options = {
+    root: cwd,
+  };
+
+  var logFileName = date + '.txt';
+  res.sendFile(logFileName, options, function (err) {
+    if (err) {
+      next(err);
+    } else {
+      console.log('Sent:', logFileName);
+    }
+  });
+});
+
+// SEND BACK LOG FILE BY DATE
+// https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-assets/download?date=Mon Dec 12 2022
+app.get('/download', (req, res) => {
+  let { date } = req.query;
+  console.log('/download:', date);
+
+  let logFile = `${cwd}/${date}.txt`;
+  res.download(logFile);
 });
 
 app.listen(PORT, () => {
