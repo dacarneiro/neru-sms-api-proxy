@@ -16,7 +16,7 @@ Vonage Application:
 4. You can also create a Vonage App via `neru app create --name "neru-app"`
    1. e.g. ✅ application successfully created - application_name="neru" application_id="5f710c44-807b-4917-a5a7-b80cb4ff1826"
 5. You can set the Voange Application ID via `neru app configure`.
-   E.g. neru app configure --app-id 5f710c44-807b-4917-a5a7-b80cb4ff1826 --rtc --voice --messaging
+   E.g. neru app configure --app-id 5f710c44-807b-4917-a5a7-b80cb4ff1826 --rtc --voice
 6. When done `neru init`
 7. Neru deploy `neru deploy`. Save the URL.
 8. Set `API Settings` at Vonage Dashboard API Settings to `SMS API` and `GET`.
@@ -24,13 +24,11 @@ Vonage Application:
 
 ## To demo app
 
-1. Send an MT outbound SMS `node ./externalServer/send-sms-axios.js`.
+1. Send an MT outbound SMS `node ./externalServer/send-sms-axios.js`. This makes an API request to the NeRu `/sms/json` route that generates a log file. A new logfile is named by Date.
 2. Respond to the SMS with a MO inbound reply.
-3. Logss are saved to public directory by date. e.g. `DATE.txt`
-4. To view a log by date Browser: `https://NERU_URL/viewlog?date=Thu Dec 08 2022`
-   - e.g. `https://kittphi.ngrok.io/viewlog?date=Thu Dec 08 2022`
-5. To download the a text file by date in Browser: `https://NERU_URL/download?date=Thu Dec 08 2022`
-   - e.g. `https://kittphi.ngrok.io/download?date=Thu Dec 08 2022`
+3. To see if a logFile exists for today, in browser: `https://NERU_URL/`.
+4. To view a logFile by date, in browser: `https://NERU_URL/viewlog?date=Thu Dec 08 2022`.
+5. To download a logFile by date, in browser: `https://NERU_URL/download?date=Thu Dec 08 2022`.
 
 ## Notes
 
@@ -86,11 +84,17 @@ const foundEntry = await state.get(`${req.query.msisdn}`);
 console.log('record retrieved:', foundEntry, req.query.msisdn);
 ```
 
-### Neru server with 3 endpoints
+### Neru server with 3 proxy endpoints
 
 1. `sms/json` endpoint to store `client_ref`.
 2. `webhooks/inbound` endpoint to lookup the `client_ref`.
 3. `cleanup` endpint is used as part of a callback for scheduled deletion of the `client_ref`.
+
+### Neru log server has 3 routes to view and download log file
+
+1. `/` let's you know if a logFile exists for today.
+2. `/viewlog` let's you search and view for logFile by date.
+3. `/download` let's you search and dowload a logFile by date.
 
 ### TODO UPDATE `EXTERNAL_SERVER`
 
