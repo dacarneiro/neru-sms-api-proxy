@@ -269,27 +269,9 @@ app.post('/sms/json', async (req, res) => {
         request_logFile = `${cwd}/request_${currentDate}.txt`;
         const content = JSON.stringify(req.body);
         // WRITE THE REQUEST TO A LOGFILE
-        await fs.appendFile(request_logFile, content, (err) => {
-          if (err) {
-            console.log('Error adding content:', err);
-            res.status(400).send({ 'Error adding content': err });
-          } else {
-            console.log('Added new content');
-          }
-        });
-        // ADD A NEW LINE
-        await fs.appendFile(request_logFile, '\n', (err) => {
-          if (err) {
-            console.log('Error adding new line:', err);
-            res.status(400).send({
-              'Error adding new line:': err,
-              request_logFile: request_logFile,
-            });
-          } else {
-            console.log('New line added');
-            //res.status(200).send({ success: 'New line added', logFile: logFile });
-          }
-        });
+        const log = fs.createWriteStream(request_logFile, { flags: 'a' });
+        log.write(`${content}\n`);
+        log.end();
       }
     } catch (err) {
       console.log('Error writing to file:', err);
@@ -373,27 +355,11 @@ app.post('/sms/json', async (req, res) => {
             SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
             const content = JSON.stringify(response.data);
             // WRITE THE REQUEST TO A LOGFILE
-            await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
-              if (err) {
-                console.log('Error adding content:', err);
-                res.status(400).send({ 'Error adding content': err });
-              } else {
-                console.log('Added new content');
-              }
+            const log = fs.createWriteStream(SMS_API_Answer_logFile, {
+              flags: 'a',
             });
-            // ADD A NEW LINE
-            await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
-              if (err) {
-                console.log('Error adding new line:', err);
-                res.status(400).send({
-                  'Error adding new line:': err,
-                  SMS_API_Answer_logFile: SMS_API_Answer_logFile,
-                });
-              } else {
-                console.log('New line added');
-                //res.status(200).send({ success: 'New line added', logFile: logFile });
-              }
-            });
+            log.write(`${content}\n`);
+            log.end();
           } // end if 0
         } catch (err) {
           console.log('Error writing to file:', err);
@@ -417,27 +383,11 @@ app.post('/sms/json', async (req, res) => {
             SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
             const content = JSON.stringify(error.data);
             // WRITE THE REQUEST TO A LOGFILE
-            await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
-              if (err) {
-                console.log('Error adding content:', err);
-                res.status(400).send({ 'Error adding content': err });
-              } else {
-                console.log('Added new content');
-              }
+            const log = fs.createWriteStream(SMS_API_Answer_logFile, {
+              flags: 'a',
             });
-            // ADD A NEW LINE
-            await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
-              if (err) {
-                console.log('Error adding new line:', err);
-                res.status(400).send({
-                  'Error adding new line:': err,
-                  SMS_API_Answer_logFile: SMS_API_Answer_logFile,
-                });
-              } else {
-                console.log('New line added');
-                //res.status(200).send({ success: 'New line added', logFile: logFile });
-              }
-            });
+            log.write(`${content}\n`);
+            log.end();
           }
         } catch (err) {
           console.log('Error writing to file:', err);
