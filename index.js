@@ -43,8 +43,12 @@ let count = 0;
 let interval = setInterval(() => {
   axios
     .get(`http://${process.env.INSTANCE_SERVICE_NAME}.neru/keep-alive`)
-    .then((resp) => console.log(resp.data))
-    .catch(console.log);
+    .then((resp) => {
+      if (count % 1000) {
+        console.log(resp.data);
+      }
+    })
+    .catch((err) => console.log('interval error: ', err));
 }, 1000);
 
 // KEEPS NERU ALIVE FOR 6000 SECONDS (110 MINUTES).
