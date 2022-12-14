@@ -39,6 +39,25 @@ app.get('/_/health', async (req, res, next) => {
   res.send('OK');
 });
 
+let count = 0;
+let interval = setInterval(() => {
+  axios
+    .get(`http://${process.env.INSTANCE_SERVICE_NAME}.neru/keep-alive`)
+    .then((resp) => console.log(resp.data))
+    .catch(console.log);
+}, 1000);
+
+// KEEPS NERU ALIVE FOR 6000 SECONDS (110 MINUTES).
+app.get('/keep-alive', (req, res) => {
+  count++;
+  console.log(`keep alive ${count}`);
+  if (count > 6600) {
+    clearInterval(interval);
+    console.log('interval cleared');
+  }
+  res.send(`OK ${count}`);
+});
+
 // app.get('/', (req, res) => {
 //   console.log('get home page');
 //   res.status(200).send('Hello from Neru');
@@ -225,6 +244,7 @@ app.get('/webhooks/inbound', async (req, res) => {
     });
 });
 
+let logCounter;
 // 1. FROM MUTANT - SAVE CLIENT REF
 app.post('/sms/json', async (req, res) => {
   console.log('/sms/json', req.body);
@@ -240,41 +260,39 @@ app.post('/sms/json', async (req, res) => {
   let request_logFile;
   (async () => {
     try {
-      currentDate = new Date().toDateString();
-      request_logFile = `${cwd}/request_${currentDate}.txt`;
-      const content = JSON.stringify(req.body);
-      // WRITE THE REQUEST TO A LOGFILE
-      await fs.appendFile(request_logFile, content, (err) => {
-        if (err) {
-          console.log('Error adding content:', err);
-          res.status(400).send({ 'Error adding content': err });
-        } else {
-          console.log('Added new content');
-        }
-      });
-      // ADD A NEW LINE
-      await fs.appendFile(request_logFile, '\n', (err) => {
-        if (err) {
-          console.log('Error adding new line:', err);
-          res
-            .status(400)
-            .send({
+      if (logCounter % 1000) {
+        currentDate = new Date().toDateString();
+        request_logFile = `${cwd}/request_${currentDate}.txt`;
+        const content = JSON.stringify(req.body);
+        // WRITE THE REQUEST TO A LOGFILE
+        await fs.appendFile(request_logFile, content, (err) => {
+          if (err) {
+            console.log('Error adding content:', err);
+            res.status(400).send({ 'Error adding content': err });
+          } else {
+            console.log('Added new content');
+          }
+        });
+        // ADD A NEW LINE
+        await fs.appendFile(request_logFile, '\n', (err) => {
+          if (err) {
+            console.log('Error adding new line:', err);
+            res.status(400).send({
               'Error adding new line:': err,
               request_logFile: request_logFile,
             });
-        } else {
-          console.log('New line added');
-          //res.status(200).send({ success: 'New line added', logFile: logFile });
-        }
-      });
+          } else {
+            console.log('New line added');
+            //res.status(200).send({ success: 'New line added', logFile: logFile });
+          }
+        });
+      }
     } catch (err) {
       console.log('Error writing to file:', err);
-      res
-        .status(400)
-        .send({
-          'Error writing to file:': err,
-          request_logFile: request_logFile,
-        });
+      res.status(400).send({
+        'Error writing to file:': err,
+        request_logFile: request_logFile,
+      });
     }
   })();
 
@@ -346,41 +364,39 @@ app.post('/sms/json', async (req, res) => {
       let SMS_API_Answer_logFile;
       (async () => {
         try {
-          currentDate = new Date().toDateString();
-          SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
-          const content = JSON.stringify(response.data);
-          // WRITE THE REQUEST TO A LOGFILE
-          await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
-            if (err) {
-              console.log('Error adding content:', err);
-              res.status(400).send({ 'Error adding content': err });
-            } else {
-              console.log('Added new content');
-            }
-          });
-          // ADD A NEW LINE
-          await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
-            if (err) {
-              console.log('Error adding new line:', err);
-              res
-                .status(400)
-                .send({
+          if (logCounter % 1000) {
+            currentDate = new Date().toDateString();
+            SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
+            const content = JSON.stringify(response.data);
+            // WRITE THE REQUEST TO A LOGFILE
+            await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
+              if (err) {
+                console.log('Error adding content:', err);
+                res.status(400).send({ 'Error adding content': err });
+              } else {
+                console.log('Added new content');
+              }
+            });
+            // ADD A NEW LINE
+            await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
+              if (err) {
+                console.log('Error adding new line:', err);
+                res.status(400).send({
                   'Error adding new line:': err,
                   SMS_API_Answer_logFile: SMS_API_Answer_logFile,
                 });
-            } else {
-              console.log('New line added');
-              //res.status(200).send({ success: 'New line added', logFile: logFile });
-            }
-          });
+              } else {
+                console.log('New line added');
+                //res.status(200).send({ success: 'New line added', logFile: logFile });
+              }
+            });
+          } // end if 0
         } catch (err) {
           console.log('Error writing to file:', err);
-          res
-            .status(400)
-            .send({
-              'Error writing to file:': err,
-              SMS_API_Answer_logFile: SMS_API_Answer_logFile,
-            });
+          res.status(400).send({
+            'Error writing to file:': err,
+            SMS_API_Answer_logFile: SMS_API_Answer_logFile,
+          });
         }
       })();
     })
@@ -392,41 +408,39 @@ app.post('/sms/json', async (req, res) => {
       let SMS_API_Answer_logFile;
       (async () => {
         try {
-          currentDate = new Date().toDateString();
-          SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
-          const content = JSON.stringify(error.data);
-          // WRITE THE REQUEST TO A LOGFILE
-          await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
-            if (err) {
-              console.log('Error adding content:', err);
-              res.status(400).send({ 'Error adding content': err });
-            } else {
-              console.log('Added new content');
-            }
-          });
-          // ADD A NEW LINE
-          await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
-            if (err) {
-              console.log('Error adding new line:', err);
-              res
-                .status(400)
-                .send({
+          if (logCounter % 1000) {
+            currentDate = new Date().toDateString();
+            SMS_API_Answer_logFile = `${cwd}/answer_${currentDate}.txt`;
+            const content = JSON.stringify(error.data);
+            // WRITE THE REQUEST TO A LOGFILE
+            await fs.appendFile(SMS_API_Answer_logFile, content, (err) => {
+              if (err) {
+                console.log('Error adding content:', err);
+                res.status(400).send({ 'Error adding content': err });
+              } else {
+                console.log('Added new content');
+              }
+            });
+            // ADD A NEW LINE
+            await fs.appendFile(SMS_API_Answer_logFile, '\n', (err) => {
+              if (err) {
+                console.log('Error adding new line:', err);
+                res.status(400).send({
                   'Error adding new line:': err,
                   SMS_API_Answer_logFile: SMS_API_Answer_logFile,
                 });
-            } else {
-              console.log('New line added');
-              //res.status(200).send({ success: 'New line added', logFile: logFile });
-            }
-          });
+              } else {
+                console.log('New line added');
+                //res.status(200).send({ success: 'New line added', logFile: logFile });
+              }
+            });
+          }
         } catch (err) {
           console.log('Error writing to file:', err);
-          res
-            .status(400)
-            .send({
-              'Error writing to file:': err,
-              SMS_API_Answer_logFile: SMS_API_Answer_logFile,
-            });
+          res.status(400).send({
+            'Error writing to file:': err,
+            SMS_API_Answer_logFile: SMS_API_Answer_logFile,
+          });
         }
       })();
     });
