@@ -45,7 +45,7 @@ let interval = setInterval(() => {
     .get(`http://${process.env.INSTANCE_SERVICE_NAME}.neru/keep-alive`)
     .then((resp) => {
       if (count % 1000) {
-        console.log(resp.data);
+        console.log('keep-alive:', resp.data);
       }
     })
     .catch((err) => console.log('interval error: ', err));
