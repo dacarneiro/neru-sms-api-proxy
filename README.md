@@ -27,15 +27,13 @@ npm install short-uuid
 
    https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-state
 
-5. Send Requests
-
-   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/append?line=This%20is%20a%20new%20entry
+5. Send High TPS Requests
 
 6. Set the Testing state to false
 
    https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-stop
 
-7. List all Assets
+7. List all Assets using NeRu CLI
 
    ```js
    neru assets ls
