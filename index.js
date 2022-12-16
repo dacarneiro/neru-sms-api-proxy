@@ -40,6 +40,29 @@ if (process.env.DEBUG == 'true') {
   console.log('🚀 Debug URL:', URL);
 } else {
   console.log('🚀 Deploy URL:', URL);
+  // PREVENTS THE ASSETS LOGS TO BE OVER WRITTEN
+  let count = 0;
+  let interval = setInterval(() => {
+    axios
+      .get(`http://${process.env.INSTANCE_SERVICE_NAME}.neru/keep-alive`)
+      .then((resp) => {
+        if (count % 1000) {
+          console.log('keep-alive:', resp.data);
+        }
+      })
+      .catch((err) => console.log('interval error: ', err));
+  }, 1000);
+
+  // KEEPS NERU ALIVE FOR 6000 SECONDS (110 MINUTES).
+  app.get('/keep-alive', (req, res) => {
+    count++;
+    // console.log(`keep alive ${count}`);
+    if (count > 6600) {
+      clearInterval(interval);
+      console.log('interval cleared');
+    }
+    res.send(`OK ${count}`);
+  });
 }
 
 app.get('/_/health', async (req, res) => {
