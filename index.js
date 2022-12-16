@@ -23,7 +23,7 @@ const assets = new Assets(session);
 const state = new State(session);
 
 const currentDate = new Date().toDateString();
-// console.log('ℹ️ currentDate:', currentDate);
+console.log('ℹ️ currentDate:', currentDate);
 const uuid = short.generate();
 console.log('ℹ️ uuid:', uuid);
 const request_logFile = os.tmpdir() + `/${uuid} request ${currentDate}.log`;
