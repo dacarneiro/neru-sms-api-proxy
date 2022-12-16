@@ -1,5 +1,66 @@
 # neru-sms-api-proxy
 
+> This VCR App requires atleast neru-apha version `3.3.2. If not please uninstall neru-alpha and reinstall library.
+
+```js
+npm uinstall neru-alpha
+npm install neru-alpha
+npm install short-uuid
+
+```
+
+## Run demo
+
+1. Check if Instance is running
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/
+
+2. Get the State of the Test - shoud be empty
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-state
+
+3. Set the Testing state to true
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-start
+
+4. Get the State of the Test - should be true
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-state
+
+5. Send Requests
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/append?line=This%20is%20a%20new%20entry
+
+6. Set the Testing state to false
+
+   https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-assets/test-stop
+
+7. List all Assets
+
+   ```js
+   neru assets ls
+   ```
+
+8. List all Logs in directory mutant
+
+   ```js
+   neru assets ls -r /mutant
+   ```
+
+9. Download Logs
+
+   ```js
+   neru assets get mutant/"baa220b23fe8 Fri Dec 16 2022.log" .
+   ```
+
+10. Remove Assets
+
+    ```js
+    neru assets remove mutant/"baa220b23fe8 Fri Dec 16 2022.log"
+    ```
+
+## THE REST NEEDS TO BE UPDATED
+
 ## Prereq
 
 Vonage Application:

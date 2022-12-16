@@ -4,6 +4,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import axios from 'axios';
+import os from 'os';
 import fs from 'fs';
 import short from 'short-uuid';
 
@@ -32,6 +33,15 @@ const answer_logFile = os.tmpdir() + `/${uuid} answer ${currentDate}.log`;
 // const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
 const EXTERNAL_SERVER = 'https://sheepbox.ddns.net:5001/from-inbound';
 
+var URL =
+  process.env.ENDPOINT_URL_SCHEME + '/' + process.env.INSTANCE_SERVICE_NAME;
+
+if (process.env.DEBUG == 'true') {
+  console.log('🚀 Debug URL:', URL);
+} else {
+  console.log('🚀 Deploy URL:', URL);
+}
+
 app.get('/_/health', async (req, res) => {
   res.sendStatus(200);
 });
@@ -39,10 +49,6 @@ app.get('/_/health', async (req, res) => {
 app.get('/', async (req, res, next) => {
   res.send('hello world').status(200);
 });
-
-var URL =
-  process.env.ENDPOINT_URL_SCHEME + '/' + process.env.INSTANCE_SERVICE_NAME;
-console.log('URL:', URL);
 
 app.get('/_/health', async (req, res, next) => {
   res.send('OK');
