@@ -75,7 +75,7 @@ app.get('/', async (req, res, next) => {
 });
 
 app.get('/_/health', async (req, res, next) => {
-  res.send('OK');
+  res.sendStatus(200);
 });
 
 app.post('/cleanup', async (req, res) => {
