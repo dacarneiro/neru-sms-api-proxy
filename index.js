@@ -1,42 +1,81 @@
 import dotenv from 'dotenv';
-import { Scheduler, neru } from 'neru-alpha';
+import { neru, Assets, State, Scheduler } from 'neru-alpha';
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
+// import morgan from 'morgan';
 import axios from 'axios';
+import os from 'os';
+import fs from 'fs';
+import short from 'short-uuid';
+
 dotenv.config();
 const app = express();
 app.use(express.json());
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static('public'));
-
 const PORT = process.env.NERU_APP_PORT || 5001;
 
-// TODO: TELL MUTANT TO UPDATE SERVER_URL
-const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
+const session = neru.createSession();
+const assets = new Assets(session);
+const state = new State(session);
 
-if (process.env.DEBUG == 'true') {
-  console.log('🚀 Debug');
-  // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-debug-neru-sms-api-proxy/
-} else {
-  console.log('🚀 Deploy');
-  // https://api-us.vonage.com/v1/neru/i/neru-4f2ff535-neru-sms-api-proxy-sms-api/
-}
+const currentDate = new Date().toDateString();
+console.log('ℹ️ currentDate:', currentDate);
+const uuid = short.generate();
+console.log('ℹ️ uuid:', uuid);
+const request_logFile = os.tmpdir() + `/${uuid} request ${currentDate}.log`;
+const answer_logFile = os.tmpdir() + `/${uuid} answer ${currentDate}.log`;
+
+// TODO: TELL MUTANT TO UPDATE SERVER_URL
+// const EXTERNAL_SERVER = 'http://kittphi.ngrok.io/from-inbound';
+const EXTERNAL_SERVER = 'https://sheepbox.ddns.net:5001/from-inbound';
 
 var URL =
   process.env.ENDPOINT_URL_SCHEME + '/' + process.env.INSTANCE_SERVICE_NAME;
-console.log('URL:', URL);
 
-app.get('/_/health', async (req, res, next) => {
-  res.send('OK');
+if (process.env.DEBUG == 'true') {
+  console.log('🚀 Debug URL:', URL);
+} else {
+  console.log('🚀 Deploy URL:', URL);
+}
+
+// PREVENTS THE ASSETS LOGS TO BE OVER WRITTEN
+let count = 0;
+let interval = setInterval(() => {
+  axios
+    .get(`http://${process.env.INSTANCE_SERVICE_NAME}.neru/keep-alive`)
+    .then((resp) => {
+      if (count % 1000) {
+        console.log('keep-alive:', resp.data);
+      }
+    })
+    .catch((err) => console.log('interval error: ', err));
+}, 1000);
+
+// KEEPS NERU ALIVE FOR 6000 SECONDS (110 MINUTES).
+app.get('/keep-alive', (req, res) => {
+  count++;
+  // console.log(`keep alive ${count}`);
+  if (count > 6600) {
+    clearInterval(interval);
+    console.log('interval cleared');
+  }
+  res.send(`OK ${count}`);
 });
 
-app.get('/', (req, res) => {
-  console.log('get home page');
-  res.status(200).send('Hello from Neru');
+app.get('/_/health', async (req, res) => {
+  res.sendStatus(200);
+});
+
+app.get('/', async (req, res, next) => {
+  res.send('hello world').status(200);
+});
+
+app.get('/_/health', async (req, res) => {
+  res.sendStatus(200);
 });
 
 app.post('/cleanup', async (req, res) => {
@@ -46,7 +85,60 @@ app.post('/cleanup', async (req, res) => {
   res.status(200).send('OK');
 });
 
-// 3. Get client-ref from neru global state and send it to prefered endpoint if not expired
+// START TESTING: WHEN HIT THE STATE PROVIDER IS SET TO TRUE ON ALL INSTANCES
+app.get('/test-start', async (req, res) => {
+  let setTesting;
+  let isTesting;
+  try {
+    setTesting = await state.set('testing', { testing: true });
+    console.log('setTesting:', setTesting);
+    isTesting = await state.get('testing');
+    console.log('ℹ️ /test-start: testing:', isTesting);
+  } catch (error) {
+    console.log('❌ /test-start error:', error);
+  }
+  res.status(200).send(isTesting);
+});
+
+// STOP TESTING: WHEN HIT THE STATE PROVIDER IS SET TO FALSE ON ALL INSTANCES
+app.get('/test-stop', async (req, res) => {
+  let setTesting;
+  let isTesting;
+  try {
+    setTesting = await state.set('testing', { testing: false });
+    console.log('setTesting:', setTesting);
+    isTesting = await state.get('testing');
+    console.log('ℹ️ /test-start: testing:', isTesting);
+
+    // SAVE THE LOG
+    let saveRespLog = await assets
+      .uploadFiles([request_logFile], '/mutant')
+      .execute();
+    console.log('ℹ️ saveRespLog', saveRespLog);
+    let saveAnsLog = await assets
+      .uploadFiles([answer_logFile], '/mutant')
+      .execute();
+    console.log('ℹ️ saveAnsLog', saveAnsLog);
+  } catch (error) {
+    console.log('❌ /test-start error:', error);
+  }
+  res.status(200).send(isTesting);
+});
+
+// GET TESTING STATE: GET STATE OF TEST; EITHER TRUE OR FALSE
+app.get('/test-state', async (req, res) => {
+  let isTesting;
+  try {
+    isTesting = await state.get('testing');
+    console.log('ℹ️ /test-state: testing:', isTesting);
+    res.send(isTesting);
+  } catch (error) {
+    console.log('❌ /test-state error:', error);
+    res.send(isTesting);
+  }
+});
+
+// Get client-ref from neru global state and send it to prefered endpoint if not expired
 app.get('/webhooks/inbound', async (req, res) => {
   console.log('INBOUND', req.query);
 
@@ -133,7 +225,7 @@ app.get('/webhooks/inbound', async (req, res) => {
     });
 });
 
-// 1. FROM MUTANT - SAVE CLIENT REF
+// FROM MUTANT - SAVE CLIENT REF
 app.post('/sms/json', async (req, res) => {
   console.log('/sms/json', req.body);
   // /sms/json {
@@ -144,6 +236,21 @@ app.post('/sms/json', async (req, res) => {
   //   "from": "19899450176",
   //   "text": "This is an outgoing sms"
   // }
+
+  (async () => {
+    try {
+      const content = JSON.stringify(req.body);
+      const log = fs.createWriteStream(request_logFile, { flags: 'a' });
+      log.write(`${content}\n`);
+      log.end();
+    } catch (err) {
+      console.log('Error writing to file:', err);
+      res.status(400).send({
+        'Error writing to file:': err,
+        request_logFile: request_logFile,
+      });
+    }
+  })();
 
   // INSTANTIATE THE NERU GLOBAL STATE
   const state = neru.getGlobalState();
@@ -209,11 +316,44 @@ app.post('/sms/json', async (req, res) => {
       // GET RESPONSE FROM VONAGE THEN SEND IT TO MUTANT
       res.status(response.status).send(response.data);
       // {"messages":[{"to":"15754947093","message-id":"46da5047-158e-4571-923e-5478f2e54913","status":"0","remaining-balance":"70.81686346","message-price":"0.00952000","network":"310090","client-ref":"{'clid':33,'cid':1036667,'sid':14125,'pid':'617a537a-aa23-44d5-958a-e9cef6422c54'}"}],"message-count":"1"}
+
+      (async () => {
+        try {
+          const content = JSON.stringify(response.data);
+          const log = fs.createWriteStream(answer_logFile, {
+            flags: 'a',
+          });
+          log.write(`${content}\n`);
+          log.end();
+        } catch (err) {
+          console.log('Error writing to file:', err);
+          res.status(400).send({
+            'Error writing to file:': err,
+            answer_logFile: answer_logFile,
+          });
+        }
+      })();
     })
     .catch(function (error) {
       console.log(error);
       // C. IF FAILED SEND RESPONSE TO VONAGE
       res.status(404).send(error.data);
+      (async () => {
+        try {
+          const content = JSON.stringify(error.data);
+          const log = fs.createWriteStream(answer_logFile, {
+            flags: 'a',
+          });
+          log.write(`${content}\n`);
+          log.end();
+        } catch (err) {
+          console.log('Error writing to file:', err);
+          res.status(400).send({
+            'Error writing to file:': err,
+            answer_logFile: answer_logFile,
+          });
+        }
+      })();
     });
 });
 
